@@ -20,6 +20,15 @@ Use a local transcript JSON file:
 mneme-codex codex-ingest --input transcript.json --base-url http://127.0.0.1:8765 --token "$MNEME_AUTH_TOKEN"
 ```
 
+For the Codex Desktop global install, let the adapter read the token from the
+install root instead:
+
+```bash
+mneme-codex codex-ingest \
+  --install-root "$HOME/.mneme-codex" \
+  --input "$HOME/.mneme-codex/.local/mneme-codex-sample-transcript.json"
+```
+
 An example file is available at `adapters/codex/transcript.example.json` in a
 source checkout. If you installed with the Codex Desktop quickstart,
 `mneme-codex setup codex-desktop --global` also writes

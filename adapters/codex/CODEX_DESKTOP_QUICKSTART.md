@@ -6,6 +6,9 @@ Mneme memory tools from any project on that machine.
 It does not enable automatic Codex prompt replacement. Current Codex support is
 MCP memory tools plus explicit hook capture/ingest commands.
 
+This installs a user-global Mneme daemon plus Codex MCP server config. It is
+not currently packaged as a Codex Desktop marketplace plugin.
+
 If you want a Codex agent to do the installation for you, ask it to read
 [`CODEX_AGENT_INSTALL.md`](../../CODEX_AGENT_INSTALL.md) before it runs
 commands.
@@ -39,6 +42,7 @@ This creates local files under `$MNEME_CODEX_HOME`, including:
 
 - `.local/mneme.env` with `MNEME_AUTH_TOKEN`;
 - `.local/mneme.db` path for the daemon;
+- `mneme.toml` for non-secret daemon/provider settings;
 - `bin/mneme-serve`;
 - `bin/mneme-mcp`;
 - `codex/mcp_config.toml.snippet`;
@@ -48,22 +52,32 @@ The command does not print the token and does not edit Codex config.
 
 ## 3. Start Mneme
 
-Run this in a normal terminal, not inside a restricted command sandbox:
+Recommended macOS path:
 
 ```bash
-"$MNEME_CODEX_HOME/bin/mneme-serve"
+"$MNEME_CODEX_HOME/.venv/bin/mneme-codex" service install \
+  --install-root "$MNEME_CODEX_HOME" \
+  --start
 ```
 
-In another terminal:
+Check the service and daemon:
 
 ```bash
 curl -sS http://127.0.0.1:8765/v1/health
 "$MNEME_CODEX_HOME/.venv/bin/mneme-codex" doctor \
   --install-root "$MNEME_CODEX_HOME"
+"$MNEME_CODEX_HOME/.venv/bin/mneme-codex" service status \
+  --install-root "$MNEME_CODEX_HOME"
 ```
 
 Expected readiness is `READY` after the daemon is running and the local token is
 loaded from `.local/mneme.env`.
+
+Foreground fallback for troubleshooting:
+
+```bash
+"$MNEME_CODEX_HOME/bin/mneme-serve"
+```
 
 ## 4. Configure Codex MCP
 
@@ -88,6 +102,7 @@ adapter was installed by `pip` rather than cloned as a checkout:
 
 ```bash
 "$MNEME_CODEX_HOME/.venv/bin/mneme-codex" codex-ingest \
+  --install-root "$MNEME_CODEX_HOME" \
   --input "$MNEME_CODEX_HOME/.local/mneme-codex-sample-transcript.json"
 ```
 
@@ -130,6 +145,59 @@ Validate captured hooks:
   --input "$MNEME_CODEX_HOME/.local/mneme-codex-hooks.jsonl"
 ```
 
+## 7. Configure Providers
+
+The default install starts in minimal local mode. For production-like semantic
+memory, configure embeddings and verify them before relying on recall quality.
+Reranker and LLM enrichment are optional quality layers.
+
+Put non-secret settings in:
+
+```bash
+"$MNEME_CODEX_HOME/mneme.toml"
+```
+
+Put API keys only in:
+
+```bash
+"$MNEME_CODEX_HOME/.local/mneme.env"
+```
+
+Common env names:
+
+```bash
+MNEME_REQUIRE_EMBEDDINGS=true
+MNEME_EMBEDDINGS_ENABLED=true
+MNEME_EMBEDDING_PROVIDER=openai_compatible
+MNEME_EMBEDDING_MODEL=<embedding-model>
+MNEME_EMBEDDING_BASE_URL=<provider-base-url>
+MNEME_EMBEDDING_API_KEY=<secret>
+MNEME_RERANKER_ENABLED=true
+MNEME_RERANKER_PROVIDER=<reranker-provider>
+MNEME_RERANKER_MODEL=<reranker-model>
+MNEME_RERANKER_BASE_URL=<provider-base-url>
+MNEME_RERANKER_API_KEY=<secret>
+MNEME_LLM_ENRICHMENT_ENABLED=true
+MNEME_LLM_PROVIDER=openai_compatible
+MNEME_LLM_MODEL=<llm-model>
+MNEME_LLM_BASE_URL=<provider-base-url>
+MNEME_LLM_API_KEY=<secret>
+```
+
+Restart after changes:
+
+```bash
+"$MNEME_CODEX_HOME/.venv/bin/mneme-codex" service stop \
+  --install-root "$MNEME_CODEX_HOME"
+"$MNEME_CODEX_HOME/.venv/bin/mneme-codex" service start \
+  --install-root "$MNEME_CODEX_HOME"
+"$MNEME_CODEX_HOME/.venv/bin/mneme-codex" doctor \
+  --install-root "$MNEME_CODEX_HOME"
+```
+
+In `doctor`, check `provider_capabilities.supports_embeddings`,
+`supports_reranking`, and `supports_llm_enrichment`.
+
 ## Troubleshooting
 
 | Symptom | Likely Cause | Fix |
@@ -137,6 +205,7 @@ Validate captured hooks:
 | `Could not resolve host: github.com` | Network/sandbox blocked GitHub | Allow network or run install in a normal terminal. |
 | pip cannot fetch `setuptools` | Network/sandbox blocked PyPI | Allow network or preinstall dependencies. |
 | `operation not permitted` binding `127.0.0.1:8765` | Sandbox blocks local bind | Start `bin/mneme-serve` outside the sandbox. |
+| Service fails to start | launchd rejected the plist or daemon crashed | Run `mneme-codex service logs --install-root "$MNEME_CODEX_HOME"`. |
 | Codex cannot see Mneme tools | MCP config not installed or Codex not restarted | Add the snippet and open a fresh Codex session. |
 | `401` from Mneme | Missing/wrong token | Run `mneme-codex doctor`; do not print the token. |
 | Hooks produce no data | Hooks not trusted or not active | Review `.codex/hooks.json`, approve in Codex, start a new session. |
@@ -147,5 +216,3 @@ Validate captured hooks:
 - It does not replace Codex prompt context automatically.
 - It does not enable hook writes by default.
 - It does not sync daemon tokens or databases across machines.
-- It does not install a background service yet; keep `bin/mneme-serve` running
-  while using Mneme.

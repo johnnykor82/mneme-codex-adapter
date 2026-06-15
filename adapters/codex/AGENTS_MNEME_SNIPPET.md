@@ -5,13 +5,12 @@ configured for the environment.
 
 ## Mneme Memory Operating Contract
 
-When working in a Mneme-enabled project, prefer the repo-local `mneme-memory`
-skill when it is available.
+When working in a Mneme-enabled project, use local planning files plus
+`mcp__mneme` tools to recover evidence.
 
 At session start or resume, after compaction or context loss, before choosing a
 milestone, before modifying files after a long interruption, and when the user
-asks what was done or why, use local planning files plus `mcp__mneme` tools to
-recover evidence.
+asks what was done or why, refresh memory before making new changes.
 
 Read local project planning/status files first when present. Then
 use `mcp__mneme.get_execution_state`, `mcp__mneme.get_goal_history`,

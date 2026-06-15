@@ -86,7 +86,7 @@ mneme-codex codex-hook-ingest \
   --input hook.json \
   --event Stop \
   --base-url http://127.0.0.1:8765 \
-  --token "$MNEME_AUTH_TOKEN"
+  --install-root "$HOME/.mneme-codex"
 ```
 
 REST ingestion remains canonical. The command calls:
@@ -103,7 +103,7 @@ To replay a local capture file into a test daemon:
 mneme-codex codex-hook-import-capture \
   --input .local/mneme-codex-hooks.jsonl \
   --base-url http://127.0.0.1:8765 \
-  --token "$MNEME_AUTH_TOKEN"
+  --install-root "$HOME/.mneme-codex"
 ```
 
 ## Context Preview File
@@ -122,7 +122,7 @@ mneme-codex codex-hook-prepare-preview \
   --event UserPromptSubmit \
   --output .local/mneme-codex-context-preview.jsonl \
   --base-url http://127.0.0.1:8765 \
-  --token "$MNEME_AUTH_TOKEN"
+  --install-root "$HOME/.mneme-codex"
 ```
 
 The preview record includes the `/v1/context/prepare` request, the prepared

@@ -27,7 +27,15 @@ from .ingest import import_codex_transcript
 from .setup import (
     DEFAULT_CODEX_BASE_URL,
     DEFAULT_CODEX_INSTALL_ROOT,
+    DEFAULT_CODEX_SERVICE_LABEL,
+    codex_service_install,
+    codex_service_logs,
+    codex_service_start,
+    codex_service_status,
+    codex_service_stop,
+    codex_service_uninstall,
     codex_desktop_status,
+    resolve_token,
     setup_codex_desktop_global,
 )
 
@@ -40,6 +48,7 @@ def build_parser() -> argparse.ArgumentParser:
     codex_ingest.add_argument("--input", type=Path, required=True)
     codex_ingest.add_argument("--base-url", default=os.environ.get("MNEME_BASE_URL", "http://127.0.0.1:8765"))
     codex_ingest.add_argument("--token", default=os.environ.get("MNEME_AUTH_TOKEN"))
+    codex_ingest.add_argument("--install-root", type=Path, default=Path(DEFAULT_CODEX_INSTALL_ROOT))
     codex_ingest.add_argument("--timeout", type=float, default=10.0)
 
     codex_hook_ingest = subcommands.add_parser("codex-hook-ingest")
@@ -47,6 +56,7 @@ def build_parser() -> argparse.ArgumentParser:
     codex_hook_ingest.add_argument("--event", default=None)
     codex_hook_ingest.add_argument("--base-url", default=os.environ.get("MNEME_BASE_URL", "http://127.0.0.1:8765"))
     codex_hook_ingest.add_argument("--token", default=os.environ.get("MNEME_AUTH_TOKEN"))
+    codex_hook_ingest.add_argument("--install-root", type=Path, default=Path(DEFAULT_CODEX_INSTALL_ROOT))
     codex_hook_ingest.add_argument("--timeout", type=float, default=10.0)
     codex_hook_ingest.add_argument("--dry-run", action="store_true")
 
@@ -63,6 +73,7 @@ def build_parser() -> argparse.ArgumentParser:
     codex_hook_import_capture.add_argument("--input", type=Path, required=True)
     codex_hook_import_capture.add_argument("--base-url", default=os.environ.get("MNEME_BASE_URL", "http://127.0.0.1:8765"))
     codex_hook_import_capture.add_argument("--token", default=os.environ.get("MNEME_AUTH_TOKEN"))
+    codex_hook_import_capture.add_argument("--install-root", type=Path, default=Path(DEFAULT_CODEX_INSTALL_ROOT))
     codex_hook_import_capture.add_argument("--timeout", type=float, default=10.0)
 
     codex_hook_prepare_preview = subcommands.add_parser("codex-hook-prepare-preview")
@@ -71,6 +82,7 @@ def build_parser() -> argparse.ArgumentParser:
     codex_hook_prepare_preview.add_argument("--output", type=Path, default=Path(DEFAULT_CODEX_CONTEXT_PREVIEW_OUTPUT))
     codex_hook_prepare_preview.add_argument("--base-url", default=os.environ.get("MNEME_BASE_URL", "http://127.0.0.1:8765"))
     codex_hook_prepare_preview.add_argument("--token", default=os.environ.get("MNEME_AUTH_TOKEN"))
+    codex_hook_prepare_preview.add_argument("--install-root", type=Path, default=Path(DEFAULT_CODEX_INSTALL_ROOT))
     codex_hook_prepare_preview.add_argument("--timeout", type=float, default=10.0)
     codex_hook_prepare_preview.add_argument("--context-window-tokens", type=int, default=DEFAULT_CODEX_CONTEXT_WINDOW_TOKENS)
     codex_hook_prepare_preview.add_argument("--budget-tokens", type=int, default=DEFAULT_CODEX_CONTEXT_BUDGET_TOKENS)
@@ -117,6 +129,19 @@ def build_parser() -> argparse.ArgumentParser:
     status.add_argument("--token", default=os.environ.get("MNEME_AUTH_TOKEN"))
     status.add_argument("--timeout", type=float, default=2.0)
 
+    service = subcommands.add_parser("service")
+    service_actions = service.add_subparsers(dest="action", required=True)
+    for action_name in ("install", "start", "stop", "status", "logs", "uninstall"):
+        action = service_actions.add_parser(action_name)
+        action.add_argument("--install-root", type=Path, default=Path(DEFAULT_CODEX_INSTALL_ROOT))
+        action.add_argument("--label", default=DEFAULT_CODEX_SERVICE_LABEL)
+        if action_name in {"install", "start", "stop", "uninstall"}:
+            action.add_argument("--dry-run", action="store_true")
+        if action_name == "install":
+            action.add_argument("--start", action="store_true")
+        if action_name == "logs":
+            action.add_argument("--lines", type=int, default=80)
+
     return parser
 
 
@@ -126,7 +151,14 @@ def main(argv: Sequence[str] | None = None) -> None:
 
     if args.command == "codex-ingest":
         transcript = json.loads(args.input.read_text(encoding="utf-8"))
-        result = asyncio.run(import_codex_transcript(transcript, base_url=args.base_url, token=args.token, timeout=args.timeout))
+        result = asyncio.run(
+            import_codex_transcript(
+                transcript,
+                base_url=args.base_url,
+                token=resolve_token(token=args.token, install_root=args.install_root),
+                timeout=args.timeout,
+            )
+        )
         print(json.dumps(result, sort_keys=True, ensure_ascii=False))
         return
 
@@ -144,7 +176,7 @@ def main(argv: Sequence[str] | None = None) -> None:
                     event_name=args.event,
                     captured_at=captured_at,
                     base_url=args.base_url,
-                    token=args.token,
+                    token=resolve_token(token=args.token, install_root=args.install_root),
                     timeout=args.timeout,
                 )
             )
@@ -164,7 +196,14 @@ def main(argv: Sequence[str] | None = None) -> None:
         return
 
     if args.command == "codex-hook-import-capture":
-        result = asyncio.run(import_codex_hook_capture_file(args.input, base_url=args.base_url, token=args.token, timeout=args.timeout))
+        result = asyncio.run(
+            import_codex_hook_capture_file(
+                args.input,
+                base_url=args.base_url,
+                token=resolve_token(token=args.token, install_root=args.install_root),
+                timeout=args.timeout,
+            )
+        )
         print(json.dumps(result, sort_keys=True, ensure_ascii=False))
         return
 
@@ -188,7 +227,7 @@ def main(argv: Sequence[str] | None = None) -> None:
                 captured_at=captured_at,
                 output_path=args.output,
                 base_url=args.base_url,
-                token=args.token,
+                token=resolve_token(token=args.token, install_root=args.install_root),
                 timeout=args.timeout,
                 context_window_tokens=args.context_window_tokens,
                 budget_tokens=args.budget_tokens,
@@ -245,6 +284,45 @@ def main(argv: Sequence[str] | None = None) -> None:
             token=args.token,
             timeout=args.timeout,
         )
+        print(json.dumps(result, indent=2, sort_keys=True, ensure_ascii=False))
+        return
+
+    if args.command == "service":
+        if args.action == "install":
+            result = codex_service_install(
+                install_root=args.install_root,
+                label=args.label,
+                start=args.start,
+                dry_run=args.dry_run,
+            )
+        elif args.action == "start":
+            result = codex_service_start(
+                install_root=args.install_root,
+                label=args.label,
+                dry_run=args.dry_run,
+            )
+        elif args.action == "stop":
+            result = codex_service_stop(
+                install_root=args.install_root,
+                label=args.label,
+                dry_run=args.dry_run,
+            )
+        elif args.action == "status":
+            result = codex_service_status(install_root=args.install_root, label=args.label)
+        elif args.action == "logs":
+            result = codex_service_logs(
+                install_root=args.install_root,
+                label=args.label,
+                lines=args.lines,
+            )
+        elif args.action == "uninstall":
+            result = codex_service_uninstall(
+                install_root=args.install_root,
+                label=args.label,
+                dry_run=args.dry_run,
+            )
+        else:
+            raise SystemExit(f"Unsupported service action: {args.action}")
         print(json.dumps(result, indent=2, sort_keys=True, ensure_ascii=False))
         return
 

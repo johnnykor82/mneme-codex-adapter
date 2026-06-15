@@ -7,11 +7,14 @@ This package provides:
 - Codex transcript import into Mneme REST ingestion.
 - Codex hook capture, validation, dry-run, and REST ingestion commands.
 - Codex context-preview preparation files for inspection.
-- A repo-local `mneme-memory` skill and Codex setup snippets.
+- Codex Desktop MCP setup snippets and user-global runtime helpers.
 
 It does not replace Codex prompt context automatically. Current Codex command
 hooks can capture/ingest events and prepare preview files; automatic prompt
 insertion still requires a supported host lifecycle hook.
+
+This installs a user-global Mneme daemon plus Codex MCP server config. It is
+not currently packaged as a Codex Desktop marketplace plugin.
 
 ## Install
 
@@ -31,16 +34,20 @@ python3 -m venv "$MNEME_CODEX_HOME/.venv"
   --python "$MNEME_CODEX_HOME/.venv/bin/python"
 ```
 
-Then start the daemon:
+Then install and start the user LaunchAgent:
 
 ```bash
-"$MNEME_CODEX_HOME/bin/mneme-serve"
+"$MNEME_CODEX_HOME/.venv/bin/mneme-codex" service install \
+  --install-root "$MNEME_CODEX_HOME" \
+  --start
 ```
 
-Check status from another terminal:
+Check status:
 
 ```bash
 "$MNEME_CODEX_HOME/.venv/bin/mneme-codex" doctor \
+  --install-root "$MNEME_CODEX_HOME"
+"$MNEME_CODEX_HOME/.venv/bin/mneme-codex" service status \
   --install-root "$MNEME_CODEX_HOME"
 ```
 
@@ -75,7 +82,9 @@ mneme mcp --base-url http://127.0.0.1:8765 --token "$MNEME_AUTH_TOKEN"
 mneme-codex setup codex-desktop --global
 mneme-codex doctor
 mneme-codex status
-mneme-codex codex-ingest --input adapters/codex/transcript.example.json --token "$MNEME_AUTH_TOKEN"
+mneme-codex service install --start
+mneme-codex service status
+mneme-codex codex-ingest --install-root "$HOME/.mneme-codex" --input adapters/codex/transcript.example.json
 mneme-codex codex-hook-capture --input - --event Stop --output .local/mneme-codex-hooks.jsonl
 mneme-codex codex-hook-validate --input .local/mneme-codex-hooks.jsonl
 mneme-codex codex-hook-ingest --input hook.json --event Stop --dry-run

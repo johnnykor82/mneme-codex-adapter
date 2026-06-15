@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import json
 import os
+import plistlib
+import platform
 import secrets
 import shutil
 import stat
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -21,6 +24,7 @@ from .hooks import (
 
 DEFAULT_CODEX_INSTALL_ROOT = "~/.mneme-codex"
 DEFAULT_CODEX_BASE_URL = "http://127.0.0.1:8765"
+DEFAULT_CODEX_SERVICE_LABEL = "com.mneme.codex"
 CODEX_ADAPTER_MODULE = "mneme_codex_adapter.cli"
 
 
@@ -38,6 +42,7 @@ def setup_codex_desktop_global(
     codex_dir = root / "codex"
     env_file = local_dir / "mneme.env"
     db_path = local_dir / "mneme.db"
+    config_path = root / "mneme.toml"
     capture_path = local_dir / "mneme-codex-hooks.jsonl"
     preview_path = local_dir / "mneme-codex-context-preview.jsonl"
     sample_transcript_path = local_dir / "mneme-codex-sample-transcript.json"
@@ -70,7 +75,7 @@ def setup_codex_desktop_global(
     )
     _write_executable(
         bin_dir / "mneme-serve",
-        _serve_script(root=root, db_path=db_path, python=python),
+        _serve_script(root=root, db_path=db_path, config_path=config_path, python=python),
         created=created,
         preserved=preserved,
         would_create=would_create,
@@ -148,6 +153,14 @@ def setup_codex_desktop_global(
         would_create=would_create,
         dry_run=dry_run,
     )
+    _write_text_file(
+        config_path,
+        _default_config(db_path=db_path),
+        created=created,
+        preserved=preserved,
+        would_create=would_create,
+        dry_run=dry_run,
+    )
 
     return {
         "schema_version": "mneme.codex_setup.v0",
@@ -161,6 +174,7 @@ def setup_codex_desktop_global(
         "paths": {
             "env_file": str(env_file),
             "db_path": str(db_path),
+            "config_file": str(config_path),
             "serve_script": str(bin_dir / "mneme-serve"),
             "mcp_script": str(bin_dir / "mneme-mcp"),
             "mcp_json": str(codex_dir / "mcp_server.example.json"),
@@ -172,9 +186,10 @@ def setup_codex_desktop_global(
             "sample_transcript": str(sample_transcript_path),
         },
         "next_steps": [
-            f"Start daemon: {bin_dir / 'mneme-serve'}",
+            f"Install service: mneme-codex service install --install-root {root} --start",
+            f"Or start foreground daemon: {bin_dir / 'mneme-serve'}",
             f"Check health: curl -sS {base_url}/v1/health",
-            f"Smoke ingest: mneme-codex codex-ingest --input {sample_transcript_path}",
+            f"Smoke ingest: mneme-codex codex-ingest --install-root {root} --input {sample_transcript_path}",
             f"Configure Codex MCP using: {codex_dir / 'mcp_config.toml.snippet'}",
             "Restart Codex or open a fresh session after MCP config changes.",
             f"Run doctor: mneme-codex doctor --install-root {root}",
@@ -198,7 +213,7 @@ def codex_desktop_status(
     local_dir = root / ".local"
     env_file = local_dir / "mneme.env"
     capture_path = local_dir / "mneme-codex-hooks.jsonl"
-    resolved_token = token or os.environ.get("MNEME_AUTH_TOKEN") or _read_token(env_file)
+    resolved_token = resolve_token(token=token, install_root=root)
 
     health = _http_get_json(f"{base_url}/v1/health", token=None, timeout=timeout)
     capabilities = _http_get_json(
@@ -234,9 +249,17 @@ def codex_desktop_status(
         "base_url": base_url,
         "python": sys.executable,
         "commands": {
-            "mneme": shutil.which("mneme"),
-            "mneme-codex": shutil.which("mneme-codex"),
+            "ambient_path": {
+                "mneme": shutil.which("mneme"),
+                "mneme-codex": shutil.which("mneme-codex"),
+            },
+            "install_root": {
+                "mneme": _entrypoint(root, "mneme"),
+                "mneme-codex": _entrypoint(root, "mneme-codex"),
+            },
         },
+        "service": codex_service_status(install_root=root, check_launchctl=False),
+        "provider_capabilities": _capability_summary(capabilities),
         "files": files,
         "token": {"present": bool(resolved_token), "source": _token_source(token, env_file)},
         "daemon": {
@@ -250,6 +273,155 @@ def codex_desktop_status(
             "warnings": hook_validation["warnings"],
         },
         "next_steps": _status_next_steps(readiness, root),
+    }
+
+
+def resolve_token(*, token: str | None = None, install_root: Path | None = None) -> str | None:
+    root = _install_root(install_root)
+    return token or os.environ.get("MNEME_AUTH_TOKEN") or _read_token(root / ".local" / "mneme.env")
+
+
+def codex_service_install(
+    *,
+    install_root: Path | None = None,
+    label: str = DEFAULT_CODEX_SERVICE_LABEL,
+    start: bool = False,
+    dry_run: bool = False,
+) -> dict[str, Any]:
+    root = _install_root(install_root)
+    paths = _service_paths(root=root, label=label)
+    plist = _launchd_plist(root=root, label=label, paths=paths)
+    report: dict[str, Any] = {
+        "schema_version": "mneme.codex_service.v0",
+        "action": "install",
+        "label": label,
+        "install_root": str(root),
+        "plist_path": str(paths["plist"]),
+        "dry_run": dry_run,
+        "start_requested": start,
+        "warnings": _service_warnings(root),
+    }
+    if dry_run:
+        report["would_write"] = str(paths["plist"])
+    else:
+        paths["plist"].parent.mkdir(parents=True, exist_ok=True)
+        paths["plist"].write_bytes(plistlib.dumps(plist, fmt=plistlib.FMT_XML, sort_keys=True))
+        report["written"] = str(paths["plist"])
+    if start:
+        report["start"] = codex_service_start(install_root=root, label=label, dry_run=dry_run)
+    return report
+
+
+def codex_service_start(
+    *,
+    install_root: Path | None = None,
+    label: str = DEFAULT_CODEX_SERVICE_LABEL,
+    dry_run: bool = False,
+) -> dict[str, Any]:
+    root = _install_root(install_root)
+    plist_path = _service_paths(root=root, label=label)["plist"]
+    domain = _launchd_domain()
+    commands = [
+        ["launchctl", "bootstrap", domain, str(plist_path)],
+        ["launchctl", "kickstart", "-k", f"{domain}/{label}"],
+    ]
+    return {
+        "schema_version": "mneme.codex_service.v0",
+        "action": "start",
+        "label": label,
+        "plist_path": str(plist_path),
+        "dry_run": dry_run,
+        "commands": [_run_command(command, dry_run=dry_run) for command in commands],
+    }
+
+
+def codex_service_stop(
+    *,
+    install_root: Path | None = None,
+    label: str = DEFAULT_CODEX_SERVICE_LABEL,
+    dry_run: bool = False,
+) -> dict[str, Any]:
+    root = _install_root(install_root)
+    domain = _launchd_domain()
+    command = ["launchctl", "bootout", f"{domain}/{label}"]
+    return {
+        "schema_version": "mneme.codex_service.v0",
+        "action": "stop",
+        "label": label,
+        "install_root": str(root),
+        "dry_run": dry_run,
+        "command": _run_command(command, dry_run=dry_run),
+    }
+
+
+def codex_service_uninstall(
+    *,
+    install_root: Path | None = None,
+    label: str = DEFAULT_CODEX_SERVICE_LABEL,
+    dry_run: bool = False,
+) -> dict[str, Any]:
+    root = _install_root(install_root)
+    plist_path = _service_paths(root=root, label=label)["plist"]
+    report: dict[str, Any] = {
+        "schema_version": "mneme.codex_service.v0",
+        "action": "uninstall",
+        "label": label,
+        "install_root": str(root),
+        "plist_path": str(plist_path),
+        "dry_run": dry_run,
+        "stop": codex_service_stop(install_root=root, label=label, dry_run=dry_run),
+    }
+    if dry_run:
+        report["would_remove"] = str(plist_path)
+    elif plist_path.exists():
+        plist_path.unlink()
+        report["removed"] = str(plist_path)
+    else:
+        report["removed"] = None
+    return report
+
+
+def codex_service_status(
+    *,
+    install_root: Path | None = None,
+    label: str = DEFAULT_CODEX_SERVICE_LABEL,
+    check_launchctl: bool = True,
+) -> dict[str, Any]:
+    root = _install_root(install_root)
+    paths = _service_paths(root=root, label=label)
+    report: dict[str, Any] = {
+        "schema_version": "mneme.codex_service_status.v0",
+        "label": label,
+        "install_root": str(root),
+        "plist_path": str(paths["plist"]),
+        "plist_exists": paths["plist"].exists(),
+        "stdout_log": str(paths["stdout_log"]),
+        "stderr_log": str(paths["stderr_log"]),
+    }
+    if check_launchctl:
+        command = ["launchctl", "print", f"{_launchd_domain()}/{label}"]
+        result = _run_command(command, dry_run=False)
+        report["launchctl"] = result
+        output = f"{result.get('stdout', '')}\n{result.get('stderr', '')}".lower()
+        report["running"] = result.get("returncode") == 0 and "state = running" in output
+    return report
+
+
+def codex_service_logs(
+    *,
+    install_root: Path | None = None,
+    label: str = DEFAULT_CODEX_SERVICE_LABEL,
+    lines: int = 80,
+) -> dict[str, Any]:
+    root = _install_root(install_root)
+    paths = _service_paths(root=root, label=label)
+    return {
+        "schema_version": "mneme.codex_service_logs.v0",
+        "label": label,
+        "stdout_log": str(paths["stdout_log"]),
+        "stderr_log": str(paths["stderr_log"]),
+        "stdout_tail": _tail_file(paths["stdout_log"], lines=lines),
+        "stderr_tail": _tail_file(paths["stderr_log"], lines=lines),
     }
 
 
@@ -335,14 +507,19 @@ def _write_executable(
         path.chmod(path.stat().st_mode | stat.S_IXUSR)
 
 
-def _serve_script(*, root: Path, db_path: Path, python: str) -> str:
+def _serve_script(*, root: Path, db_path: Path, config_path: Path, python: str) -> str:
     return (
         "#!/bin/sh\n"
         "set -eu\n"
         f'ENV_FILE="{root / ".local" / "mneme.env"}"\n'
+        f'CONFIG_FILE="{config_path}"\n'
         'if [ -f "$ENV_FILE" ]; then set -a; . "$ENV_FILE"; set +a; fi\n'
         ': "${MNEME_AUTH_TOKEN:?MNEME_AUTH_TOKEN is not set}"\n'
-        f'exec "{python}" -m mneme_service.cli serve --db "{db_path}" --token "$MNEME_AUTH_TOKEN" "$@"\n'
+        'if [ -f "$CONFIG_FILE" ]; then\n'
+        f'  exec "{python}" -m mneme_service.cli serve --config "$CONFIG_FILE" --db "{db_path}" --token "$MNEME_AUTH_TOKEN" "$@"\n'
+        "else\n"
+        f'  exec "{python}" -m mneme_service.cli serve --db "{db_path}" --token "$MNEME_AUTH_TOKEN" "$@"\n'
+        "fi\n"
     )
 
 
@@ -361,9 +538,34 @@ def _read_token(path: Path) -> str | None:
     if not path.exists():
         return None
     for line in path.read_text(encoding="utf-8").splitlines():
-        if line.startswith("MNEME_AUTH_TOKEN="):
-            return line.split("=", 1)[1].strip().strip('"').strip("'")
+        stripped = line.strip()
+        if stripped.startswith("export "):
+            stripped = stripped.removeprefix("export ").strip()
+        if stripped.startswith("MNEME_AUTH_TOKEN="):
+            return stripped.split("=", 1)[1].strip().strip('"').strip("'")
     return None
+
+
+def _capability_summary(capabilities: dict[str, Any]) -> dict[str, Any]:
+    if not capabilities.get("ok") or not isinstance(capabilities.get("body"), dict):
+        return {
+            "supports_embeddings": False,
+            "requires_embeddings": False,
+            "supports_reranking": False,
+            "supports_llm_enrichment": False,
+        }
+    body = capabilities["body"]
+    return {
+        "supports_embeddings": bool(body.get("supports_embeddings")),
+        "requires_embeddings": bool(body.get("requires_embeddings")),
+        "supports_reranking": bool(body.get("supports_reranking")),
+        "supports_llm_enrichment": bool(body.get("supports_llm_enrichment")),
+    }
+
+
+def _entrypoint(root: Path, name: str) -> str | None:
+    path = root / ".venv" / "bin" / name
+    return str(path) if path.exists() else None
 
 
 def _token_source(cli_token: str | None, env_file: Path) -> str | None:
@@ -392,6 +594,99 @@ def _http_get_json(url: str, *, token: str | None, timeout: float) -> dict[str, 
         }
     except Exception as exc:  # pragma: no cover - exact network errors vary.
         return {"ok": False, "error": type(exc).__name__, "message": str(exc)}
+
+
+def _service_paths(*, root: Path, label: str) -> dict[str, Path]:
+    return {
+        "plist": Path.home() / "Library" / "LaunchAgents" / f"{label}.plist",
+        "stdout_log": root / ".local" / "launchd.out.log",
+        "stderr_log": root / ".local" / "launchd.err.log",
+    }
+
+
+def _launchd_plist(*, root: Path, label: str, paths: dict[str, Path]) -> dict[str, Any]:
+    return {
+        "Label": label,
+        "ProgramArguments": [str(root / "bin" / "mneme-serve")],
+        "WorkingDirectory": str(root),
+        "RunAtLoad": True,
+        "KeepAlive": True,
+        "StandardOutPath": str(paths["stdout_log"]),
+        "StandardErrorPath": str(paths["stderr_log"]),
+    }
+
+
+def _launchd_domain() -> str:
+    return f"gui/{os.getuid()}"
+
+
+def _run_command(command: list[str], *, dry_run: bool) -> dict[str, Any]:
+    if dry_run:
+        return {"command": command, "dry_run": True}
+    try:
+        completed = subprocess.run(command, capture_output=True, text=True, timeout=10, check=False)
+    except Exception as exc:  # pragma: no cover - OS/tool availability varies.
+        return {"command": command, "ok": False, "error": type(exc).__name__, "message": str(exc)}
+    return {
+        "command": command,
+        "ok": completed.returncode == 0,
+        "returncode": completed.returncode,
+        "stdout": completed.stdout.strip(),
+        "stderr": completed.stderr.strip(),
+    }
+
+
+def _tail_file(path: Path, *, lines: int) -> list[str]:
+    if not path.exists():
+        return []
+    return path.read_text(encoding="utf-8", errors="replace").splitlines()[-max(lines, 0) :]
+
+
+def _service_warnings(root: Path | None = None) -> list[str]:
+    warnings = [
+        "Service commands manage a macOS user LaunchAgent for this account only.",
+        "The service script sources the local env file but service reports never print token values.",
+    ]
+    if root is not None and not (root / "bin" / "mneme-serve").exists():
+        warnings.append("Run setup codex-desktop --global before installing the service.")
+    if platform.system() != "Darwin":
+        warnings.append("launchd service commands are intended for macOS.")
+    return warnings
+
+
+def _default_config(*, db_path: Path) -> str:
+    return f"""# Mneme Codex local config.
+# Put non-secret provider settings here. Put API keys in .local/mneme.env.
+
+[daemon]
+db_path = "{db_path}"
+host = "127.0.0.1"
+port = 8765
+insecure_dev = false
+require_embeddings = false
+
+[providers.embeddings]
+enabled = false
+provider = "openai_compatible"
+model = "text-embedding-3-small"
+base_url = "https://api.openai.com/v1"
+timeout_seconds = 30.0
+batch_size = 16
+
+[providers.reranker]
+enabled = false
+provider = "jina"
+model = "jina-reranker-v2-base-multilingual"
+base_url = "https://api.jina.ai/v1"
+timeout_seconds = 30.0
+
+[providers.llm_enrichment]
+enabled = false
+provider = "openai_compatible"
+model = "gpt-4.1-mini"
+base_url = "https://api.openai.com/v1"
+timeout_seconds = 30.0
+"""
 
 
 def _status_next_steps(readiness: str, root: Path) -> list[str]:
