@@ -1,0 +1,74 @@
+{
+  "mneme_codex_hook_contract": {
+    "schema_version": "mneme.codex_hooks_contract.v0",
+    "status": "disabled_example",
+    "writes_enabled": false,
+    "requires_real_session_payload_validation": true,
+    "mcp_write_tools_enabled": false,
+    "rest_ingestion_remains_canonical": true,
+    "planned_command": "mneme-codex codex-hook-ingest --input - --dry-run",
+    "notes": [
+      "This is a contract example, not a ready-to-enable hook file.",
+      "Enable writes only after real Codex hook payloads are captured and tested.",
+      "Hook/importer commands should call Mneme REST ingestion; MCP stays read-only for this slice.",
+      "MCP access does not replace Codex prompt context."
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "mneme-codex codex-hook-ingest --event SessionStart --input - --dry-run"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "mneme-codex codex-hook-ingest --event UserPromptSubmit --input - --dry-run"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "mneme-codex codex-hook-ingest --event PostToolUse --input - --dry-run"
+          }
+        ]
+      }
+    ],
+    "PostCompact": [
+      {
+        "matcher": "manual|auto",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "mneme-codex codex-hook-ingest --event PostCompact --input - --dry-run"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "mneme-codex codex-hook-ingest --event Stop --input - --dry-run"
+          }
+        ]
+      }
+    ]
+  }
+}

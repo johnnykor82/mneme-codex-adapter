@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "mneme": {
+      "command": "mneme",
+      "args": [
+        "mcp",
+        "--base-url",
+        "http://127.0.0.1:8765"
+      ],
+      "env": {
+        "MNEME_AUTH_TOKEN": "replace-with-local-token"
+      }
+    }
+  }
+}

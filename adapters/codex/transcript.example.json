@@ -1,0 +1,47 @@
+{
+  "session": {
+    "session_id": "codex-example-session",
+    "agent_id": "codex",
+    "runtime": "CODEX",
+    "project_id": "mneme",
+    "model": "gpt-5-codex",
+    "started_at": "2026-06-12T12:00:00Z",
+    "metadata": {
+      "cwd": "/repo/mneme"
+    }
+  },
+  "turns": [
+    {
+      "turn_id": "turn-1",
+      "started_at": "2026-06-12T12:00:00Z",
+      "completed_at": "2026-06-12T12:00:30Z",
+      "usage": {
+        "prompt_tokens": 20,
+        "completion_tokens": 10,
+        "tool_call_count": 1
+      },
+      "messages": [
+        {
+          "role": "USER",
+          "text": "Continue the Mneme ingestion work.",
+          "timestamp": "2026-06-12T12:00:01Z"
+        },
+        {
+          "role": "ASSISTANT",
+          "text": "I will add a Codex transcript importer.",
+          "timestamp": "2026-06-12T12:00:02Z"
+        },
+        {
+          "role": "TOOL",
+          "type": "TOOL_OUTPUT",
+          "text": "focused pytest passed",
+          "timestamp": "2026-06-12T12:00:03Z",
+          "tool": {
+            "name": "pytest",
+            "call_id": "tool-call-1"
+          }
+        }
+      ]
+    }
+  ]
+}

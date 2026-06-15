@@ -1,0 +1,72 @@
+{
+  "mneme_codex_hook_capture_example": {
+    "schema_version": "mneme.codex_hook_capture_example.v0",
+    "status": "capture_only",
+    "writes_enabled": false,
+    "output_path": ".local/mneme-codex-hooks.jsonl",
+    "next_command": "mneme-codex codex-hook-validate --input .local/mneme-codex-hooks.jsonl",
+    "notes": [
+      "Use this only in a trusted Codex project after reviewing the command hooks.",
+      "This example captures raw hook payloads into an untracked local .local file.",
+      "It does not write to Mneme REST and does not add MCP write tools.",
+      "After validation, use codex_hooks.contract.example.json or an enable-ready setup derived from it."
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "mneme-codex codex-hook-capture --input - --event SessionStart --output .local/mneme-codex-hooks.jsonl"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "mneme-codex codex-hook-capture --input - --event UserPromptSubmit --output .local/mneme-codex-hooks.jsonl"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "mneme-codex codex-hook-capture --input - --event PostToolUse --output .local/mneme-codex-hooks.jsonl"
+          }
+        ]
+      }
+    ],
+    "PostCompact": [
+      {
+        "matcher": "manual|auto",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "mneme-codex codex-hook-capture --input - --event PostCompact --output .local/mneme-codex-hooks.jsonl"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "mneme-codex codex-hook-capture --input - --event Stop --output .local/mneme-codex-hooks.jsonl"
+          }
+        ]
+      }
+    ]
+  }
+}
