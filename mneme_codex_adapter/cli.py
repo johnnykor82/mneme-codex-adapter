@@ -35,6 +35,7 @@ from .setup import (
     codex_service_stop,
     codex_service_uninstall,
     codex_desktop_status,
+    install_mneme_memory_skill,
     resolve_token,
     setup_codex_desktop_global,
 )
@@ -141,6 +142,13 @@ def build_parser() -> argparse.ArgumentParser:
             action.add_argument("--start", action="store_true")
         if action_name == "logs":
             action.add_argument("--lines", type=int, default=80)
+
+    skill = subcommands.add_parser("skill")
+    skill_actions = skill.add_subparsers(dest="action", required=True)
+    skill_install = skill_actions.add_parser("install")
+    skill_install.add_argument("--target-dir", type=Path, default=Path("~/.codex/skills"))
+    skill_install.add_argument("--force", action="store_true")
+    skill_install.add_argument("--dry-run", action="store_true")
 
     return parser
 
@@ -323,6 +331,17 @@ def main(argv: Sequence[str] | None = None) -> None:
             )
         else:
             raise SystemExit(f"Unsupported service action: {args.action}")
+        print(json.dumps(result, indent=2, sort_keys=True, ensure_ascii=False))
+        return
+
+    if args.command == "skill":
+        if args.action != "install":
+            raise SystemExit(f"Unsupported skill action: {args.action}")
+        result = install_mneme_memory_skill(
+            target_dir=args.target_dir,
+            force=args.force,
+            dry_run=args.dry_run,
+        )
         print(json.dumps(result, indent=2, sort_keys=True, ensure_ascii=False))
         return
 

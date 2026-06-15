@@ -7,6 +7,7 @@ This package provides:
 - Codex transcript import into Mneme REST ingestion.
 - Codex hook capture, validation, dry-run, and REST ingestion commands.
 - Codex context-preview preparation files for inspection.
+- A `mneme-memory` Codex skill installer for long-session recall behavior.
 - Codex Desktop MCP setup snippets and user-global runtime helpers.
 
 It does not replace Codex prompt context automatically. Current Codex command
@@ -32,6 +33,8 @@ python3 -m venv "$MNEME_CODEX_HOME/.venv"
   --global \
   --install-root "$MNEME_CODEX_HOME" \
   --python "$MNEME_CODEX_HOME/.venv/bin/python"
+"$MNEME_CODEX_HOME/.venv/bin/mneme-codex" skill install \
+  --target-dir "$HOME/.codex/skills"
 ```
 
 Then install and start the user LaunchAgent:
@@ -80,6 +83,7 @@ mneme mcp --base-url http://127.0.0.1:8765 --token "$MNEME_AUTH_TOKEN"
 
 ```bash
 mneme-codex setup codex-desktop --global
+mneme-codex skill install
 mneme-codex doctor
 mneme-codex status
 mneme-codex service install --start

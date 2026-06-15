@@ -9,6 +9,7 @@ import shutil
 import stat
 import subprocess
 import sys
+from importlib import resources
 from pathlib import Path
 from typing import Any
 
@@ -25,6 +26,8 @@ from .hooks import (
 DEFAULT_CODEX_INSTALL_ROOT = "~/.mneme-codex"
 DEFAULT_CODEX_BASE_URL = "http://127.0.0.1:8765"
 DEFAULT_CODEX_SERVICE_LABEL = "com.mneme.codex"
+DEFAULT_CODEX_SKILLS_DIR = "~/.codex/skills"
+MNEME_MEMORY_SKILL_NAME = "mneme-memory"
 CODEX_ADAPTER_MODULE = "mneme_codex_adapter.cli"
 
 
@@ -186,6 +189,7 @@ def setup_codex_desktop_global(
             "sample_transcript": str(sample_transcript_path),
         },
         "next_steps": [
+            f"Install skill: mneme-codex skill install --target-dir {Path(DEFAULT_CODEX_SKILLS_DIR).expanduser()}",
             f"Install service: mneme-codex service install --install-root {root} --start",
             f"Or start foreground daemon: {bin_dir / 'mneme-serve'}",
             f"Check health: curl -sS {base_url}/v1/health",
@@ -274,6 +278,47 @@ def codex_desktop_status(
         },
         "next_steps": _status_next_steps(readiness, root),
     }
+
+
+def install_mneme_memory_skill(
+    *,
+    target_dir: Path | None = None,
+    force: bool = False,
+    dry_run: bool = False,
+) -> dict[str, Any]:
+    root = Path(DEFAULT_CODEX_SKILLS_DIR) if target_dir is None else target_dir
+    skills_dir = root.expanduser().resolve()
+    skill_dir = skills_dir / MNEME_MEMORY_SKILL_NAME
+    skill_path = skill_dir / "SKILL.md"
+    skill_text = _mneme_memory_skill_text()
+    report: dict[str, Any] = {
+        "schema_version": "mneme.codex_skill_install.v0",
+        "skill": MNEME_MEMORY_SKILL_NAME,
+        "target_dir": str(skills_dir),
+        "skill_path": str(skill_path),
+        "dry_run": dry_run,
+        "force": force,
+        "created": [],
+        "preserved": [],
+        "warnings": [],
+    }
+    if dry_run:
+        report["would_write"] = str(skill_path)
+        return report
+    if skill_path.exists():
+        existing = skill_path.read_text(encoding="utf-8")
+        if existing == skill_text:
+            report["preserved"].append(str(skill_path))
+            return report
+        if not force:
+            report["warnings"].append("Skill already exists with different content; rerun with --force to replace it.")
+            report["status"] = "exists-different"
+            return report
+    skill_dir.mkdir(parents=True, exist_ok=True)
+    skill_path.write_text(skill_text, encoding="utf-8")
+    report["created"].append(str(skill_path))
+    report["status"] = "installed"
+    return report
 
 
 def resolve_token(*, token: str | None = None, install_root: Path | None = None) -> str | None:
@@ -544,6 +589,14 @@ def _read_token(path: Path) -> str | None:
         if stripped.startswith("MNEME_AUTH_TOKEN="):
             return stripped.split("=", 1)[1].strip().strip('"').strip("'")
     return None
+
+
+def _mneme_memory_skill_text() -> str:
+    return (
+        resources.files("mneme_codex_adapter")
+        .joinpath("skills", MNEME_MEMORY_SKILL_NAME, "SKILL.md")
+        .read_text(encoding="utf-8")
+    )
 
 
 def _capability_summary(capabilities: dict[str, Any]) -> dict[str, Any]:

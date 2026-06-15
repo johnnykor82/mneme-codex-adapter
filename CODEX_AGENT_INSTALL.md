@@ -38,13 +38,14 @@ export MNEME_CODEX_HOME="$HOME/.mneme-codex"
 1. Create the install root and virtual environment.
 2. Install this adapter from GitHub.
 3. Run `mneme-codex setup codex-desktop --global`.
-4. Install and start the user LaunchAgent with `mneme-codex service install --start`.
-5. Run `mneme-codex doctor --install-root "$MNEME_CODEX_HOME"`.
-6. Show the user the generated MCP config snippet path.
-7. Ask the user before editing any global Codex config.
-8. Run the sample transcript smoke ingest.
-9. Explain provider configuration for embeddings, reranker, and LLM enrichment.
-10. Do not enable write hooks. Use capture/validate only unless the user explicitly approves write hooks later.
+4. Install the `mneme-memory` Codex skill globally with `mneme-codex skill install`.
+5. Install and start the user LaunchAgent with `mneme-codex service install --start`.
+6. Run `mneme-codex doctor --install-root "$MNEME_CODEX_HOME"`.
+7. Show the user the generated MCP config snippet path.
+8. Ask the user before editing any global Codex config.
+9. Run the sample transcript smoke ingest.
+10. Explain provider configuration for embeddings, reranker, and LLM enrichment.
+11. Do not enable write hooks. Use capture/validate only unless the user explicitly approves write hooks later.
 
 ## Commands
 
@@ -59,7 +60,15 @@ python3 -m venv "$MNEME_CODEX_HOME/.venv"
   --global \
   --install-root "$MNEME_CODEX_HOME" \
   --python "$MNEME_CODEX_HOME/.venv/bin/python"
+
+"$MNEME_CODEX_HOME/.venv/bin/mneme-codex" skill install \
+  --target-dir "$HOME/.codex/skills"
 ```
+
+The `mneme-memory` skill is required for the expected Codex operating behavior:
+it teaches fresh Codex sessions when to call Mneme MCP tools after restart,
+resume, compaction, and long interruptions. If `~/.codex/skills` is a symlink
+to a shared skills folder, this command installs into that shared target.
 
 Install and start the daemon as a macOS user LaunchAgent:
 
@@ -102,6 +111,7 @@ cat "$MNEME_CODEX_HOME/codex/mcp_config.toml.snippet"
 ## Success Criteria
 
 - `mneme-codex doctor` reports `READY` after the daemon is running.
+- `mneme-memory` exists at `$HOME/.codex/skills/mneme-memory/SKILL.md`.
 - The install root contains `.local/mneme.env`, `bin/mneme-serve`, `bin/mneme-mcp`, and `codex/mcp_config.toml.snippet`.
 - `mneme-codex service status` shows the LaunchAgent state or actionable launchctl output.
 - The sample transcript ingest succeeds.

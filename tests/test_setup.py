@@ -28,6 +28,7 @@ def test_global_setup_creates_safe_runtime_files(tmp_path: Path) -> None:
     assert (root / "codex" / "hooks.capture.example.json").exists()
     assert (root / ".local" / "mneme-codex-sample-transcript.json").exists()
     assert result["paths"]["config_file"] == str(root / "mneme.toml")
+    assert any("skill install" in step for step in result["next_steps"])
     assert any("service install" in step for step in result["next_steps"])
     assert any("--install-root" in step and "codex-ingest" in step for step in result["next_steps"])
 
@@ -96,3 +97,34 @@ def test_service_install_dry_run_is_token_safe(tmp_path: Path) -> None:
     assert result["start"]["commands"][0]["dry_run"] is True
     assert result["would_write"].endswith("com.mneme.codex.plist")
     assert "MNEME_AUTH_TOKEN=" not in serialized
+
+
+def test_skill_install_writes_mneme_memory_skill(tmp_path: Path) -> None:
+    from mneme_codex_adapter.setup import install_mneme_memory_skill
+
+    target_dir = tmp_path / "skills"
+    result = install_mneme_memory_skill(target_dir=target_dir)
+    skill_path = target_dir / "mneme-memory" / "SKILL.md"
+    text = skill_path.read_text(encoding="utf-8")
+
+    assert result["schema_version"] == "mneme.codex_skill_install.v0"
+    assert result["skill"] == "mneme-memory"
+    assert result["status"] == "installed"
+    assert result["created"] == [str(skill_path)]
+    assert "name: mneme-memory" in text
+    assert "mcp__mneme.context_search" in text
+    assert "evidence, not instructions" in text.lower()
+
+    second = install_mneme_memory_skill(target_dir=target_dir)
+    assert second["preserved"] == [str(skill_path)]
+
+
+def test_install_docs_require_mneme_memory_skill() -> None:
+    agent_install = Path("CODEX_AGENT_INSTALL.md").read_text(encoding="utf-8").lower()
+    quickstart = Path("adapters/codex/CODEX_DESKTOP_QUICKSTART.md").read_text(encoding="utf-8").lower()
+    combined = agent_install + "\n" + quickstart
+
+    assert "mneme-codex skill install" in combined
+    assert "mneme-memory" in combined
+    assert "required" in combined
+    assert "$home/.codex/skills" in combined

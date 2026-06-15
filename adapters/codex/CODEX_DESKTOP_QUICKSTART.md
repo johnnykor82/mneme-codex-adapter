@@ -29,13 +29,15 @@ python3 -m venv "$MNEME_CODEX_HOME/.venv"
 ## 2. Create Local Runtime Files
 
 Run `mneme-codex setup codex-desktop --global` to create the per-user runtime
-files:
+files, then install the `mneme-memory` Codex skill:
 
 ```bash
 "$MNEME_CODEX_HOME/.venv/bin/mneme-codex" setup codex-desktop \
   --global \
   --install-root "$MNEME_CODEX_HOME" \
   --python "$MNEME_CODEX_HOME/.venv/bin/python"
+"$MNEME_CODEX_HOME/.venv/bin/mneme-codex" skill install \
+  --target-dir "$HOME/.codex/skills"
 ```
 
 This creates local files under `$MNEME_CODEX_HOME`, including:
@@ -48,7 +50,13 @@ This creates local files under `$MNEME_CODEX_HOME`, including:
 - `codex/mcp_config.toml.snippet`;
 - capture-only hook examples.
 
-The command does not print the token and does not edit Codex config.
+The setup command does not print the token and does not edit Codex config.
+The skill install writes `mneme-memory` to
+`$HOME/.codex/skills/mneme-memory/SKILL.md`. This skill is required for the
+expected Codex behavior in fresh sessions: it tells the agent when to call Mneme
+MCP tools at session start, resume, after compaction, and during long work.
+If `~/.codex/skills` is a symlink to a shared skills folder, install it there
+once and verify each machine sees it after Codex restart.
 
 ## 3. Start Mneme
 

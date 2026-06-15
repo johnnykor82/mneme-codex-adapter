@@ -5,7 +5,8 @@ configured for the environment.
 
 ## Mneme Memory Operating Contract
 
-When working in a Mneme-enabled project, use local planning files plus
+When working in a Mneme-enabled project, load and follow the installed
+`mneme-memory` skill when it is available, then use local planning files plus
 `mcp__mneme` tools to recover evidence.
 
 At session start or resume, after compaction or context loss, before choosing a
