@@ -1,6 +1,6 @@
 # Codex Hooks Usage
 
-This is the first safe hook-ingestion surface for Codex. It is disabled by default.
+This is the first safe hook-ingestion surface for Codex dogfood. It is disabled by default.
 Local real Codex Desktop capture has been validated, but user-facing write
 setup should still go through dry-run and a local REST-ingestion plus MCP-recall
 smoke test before publication.

@@ -15,6 +15,36 @@ insertion still requires a supported host lifecycle hook.
 
 ## Install
 
+Recommended Codex Desktop path:
+
+```bash
+export MNEME_CODEX_HOME="$HOME/.mneme-codex"
+python3 -m venv "$MNEME_CODEX_HOME/.venv"
+"$MNEME_CODEX_HOME/.venv/bin/python" -m pip install \
+  "git+https://github.com/johnnykor82/mneme-codex-adapter.git"
+"$MNEME_CODEX_HOME/.venv/bin/mneme-codex" setup codex-desktop \
+  --global \
+  --install-root "$MNEME_CODEX_HOME" \
+  --python "$MNEME_CODEX_HOME/.venv/bin/python"
+```
+
+Then start the daemon:
+
+```bash
+"$MNEME_CODEX_HOME/bin/mneme-serve"
+```
+
+Check status from another terminal:
+
+```bash
+"$MNEME_CODEX_HOME/.venv/bin/mneme-codex" doctor \
+  --install-root "$MNEME_CODEX_HOME"
+```
+
+Full guide: [adapters/codex/CODEX_DESKTOP_QUICKSTART.md](adapters/codex/CODEX_DESKTOP_QUICKSTART.md).
+
+Developer checkout path:
+
 ```bash
 python -m venv .venv
 . .venv/bin/activate
@@ -39,6 +69,9 @@ mneme mcp --base-url http://127.0.0.1:8765 --token "$MNEME_AUTH_TOKEN"
 ## Adapter CLI
 
 ```bash
+mneme-codex setup codex-desktop --global
+mneme-codex doctor
+mneme-codex status
 mneme-codex codex-ingest --input adapters/codex/transcript.example.json --token "$MNEME_AUTH_TOKEN"
 mneme-codex codex-hook-capture --input - --event Stop --output .local/mneme-codex-hooks.jsonl
 mneme-codex codex-hook-validate --input .local/mneme-codex-hooks.jsonl
@@ -47,6 +80,7 @@ mneme-codex codex-hook-ingest --input hook.json --event Stop --dry-run
 
 See:
 
+- [adapters/codex/CODEX_DESKTOP_QUICKSTART.md](adapters/codex/CODEX_DESKTOP_QUICKSTART.md)
 - [adapters/codex/MNEME_CODEX_MCP_USAGE.md](adapters/codex/MNEME_CODEX_MCP_USAGE.md)
 - [adapters/codex/MNEME_CODEX_INGEST_USAGE.md](adapters/codex/MNEME_CODEX_INGEST_USAGE.md)
 - [adapters/codex/MNEME_CODEX_HOOKS_USAGE.md](adapters/codex/MNEME_CODEX_HOOKS_USAGE.md)

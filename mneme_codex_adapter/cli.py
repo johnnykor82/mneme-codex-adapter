@@ -24,6 +24,12 @@ from .hooks import (
     validate_codex_hook_capture_file,
 )
 from .ingest import import_codex_transcript
+from .setup import (
+    DEFAULT_CODEX_BASE_URL,
+    DEFAULT_CODEX_INSTALL_ROOT,
+    codex_desktop_status,
+    setup_codex_desktop_global,
+)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -88,6 +94,28 @@ def build_parser() -> argparse.ArgumentParser:
     codex_hook_render_context_preview.add_argument("--context-window-tokens", type=int, default=DEFAULT_CODEX_CONTEXT_WINDOW_TOKENS)
     codex_hook_render_context_preview.add_argument("--budget-tokens", type=int, default=DEFAULT_CODEX_CONTEXT_BUDGET_TOKENS)
     codex_hook_render_context_preview.add_argument("--output", type=Path, default=None)
+
+    setup = subcommands.add_parser("setup")
+    setup_targets = setup.add_subparsers(dest="target", required=True)
+    codex_desktop_setup = setup_targets.add_parser("codex-desktop")
+    codex_desktop_setup.add_argument("--global", dest="global_install", action="store_true")
+    codex_desktop_setup.add_argument("--install-root", type=Path, default=Path(DEFAULT_CODEX_INSTALL_ROOT))
+    codex_desktop_setup.add_argument("--base-url", default=DEFAULT_CODEX_BASE_URL)
+    codex_desktop_setup.add_argument("--python", default=sys.executable)
+    codex_desktop_setup.add_argument("--dry-run", action="store_true")
+    codex_desktop_setup.add_argument("--force-token", action="store_true")
+
+    doctor = subcommands.add_parser("doctor")
+    doctor.add_argument("--install-root", type=Path, default=Path(DEFAULT_CODEX_INSTALL_ROOT))
+    doctor.add_argument("--base-url", default=os.environ.get("MNEME_BASE_URL", DEFAULT_CODEX_BASE_URL))
+    doctor.add_argument("--token", default=os.environ.get("MNEME_AUTH_TOKEN"))
+    doctor.add_argument("--timeout", type=float, default=2.0)
+
+    status = subcommands.add_parser("status")
+    status.add_argument("--install-root", type=Path, default=Path(DEFAULT_CODEX_INSTALL_ROOT))
+    status.add_argument("--base-url", default=os.environ.get("MNEME_BASE_URL", DEFAULT_CODEX_BASE_URL))
+    status.add_argument("--token", default=os.environ.get("MNEME_AUTH_TOKEN"))
+    status.add_argument("--timeout", type=float, default=2.0)
 
     return parser
 
@@ -193,6 +221,31 @@ def main(argv: Sequence[str] | None = None) -> None:
             budget_tokens=args.budget_tokens,
         )
         _print_or_write(result, args.output)
+        return
+
+    if args.command == "setup":
+        if args.target != "codex-desktop":
+            raise SystemExit(f"Unsupported Codex setup target: {args.target}")
+        if not args.global_install:
+            raise SystemExit("setup codex-desktop currently requires --global.")
+        result = setup_codex_desktop_global(
+            install_root=args.install_root,
+            base_url=args.base_url,
+            python=args.python,
+            dry_run=args.dry_run,
+            force_token=args.force_token,
+        )
+        print(json.dumps(result, indent=2, sort_keys=True, ensure_ascii=False))
+        return
+
+    if args.command in {"doctor", "status"}:
+        result = codex_desktop_status(
+            install_root=args.install_root,
+            base_url=args.base_url,
+            token=args.token,
+            timeout=args.timeout,
+        )
+        print(json.dumps(result, indent=2, sort_keys=True, ensure_ascii=False))
         return
 
 
