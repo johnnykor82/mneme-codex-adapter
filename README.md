@@ -15,6 +15,9 @@ insertion still requires a supported host lifecycle hook.
 
 ## Install
 
+Installing with a Codex agent? Ask it to read
+[CODEX_AGENT_INSTALL.md](CODEX_AGENT_INSTALL.md) before it runs commands.
+
 Recommended Codex Desktop path:
 
 ```bash

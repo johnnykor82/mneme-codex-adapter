@@ -6,6 +6,10 @@ Mneme memory tools from any project on that machine.
 It does not enable automatic Codex prompt replacement. Current Codex support is
 MCP memory tools plus explicit hook capture/ingest commands.
 
+If you want a Codex agent to do the installation for you, ask it to read
+[`CODEX_AGENT_INSTALL.md`](../../CODEX_AGENT_INSTALL.md) before it runs
+commands.
+
 ## 1. Install The Adapter
 
 Use a per-user install root. This keeps the daemon database, token, scripts, and
