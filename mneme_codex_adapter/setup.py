@@ -211,6 +211,7 @@ def codex_desktop_status(
     install_root: Path | None = None,
     base_url: str = DEFAULT_CODEX_BASE_URL,
     token: str | None = None,
+    service_label: str = DEFAULT_CODEX_SERVICE_LABEL,
     timeout: float = 2.0,
 ) -> dict[str, Any]:
     root = _install_root(install_root)
@@ -262,7 +263,7 @@ def codex_desktop_status(
                 "mneme-codex": _entrypoint(root, "mneme-codex"),
             },
         },
-        "service": codex_service_status(install_root=root, check_launchctl=False),
+        "service": codex_service_status(install_root=root, label=service_label, check_launchctl=False),
         "provider_capabilities": _capability_summary(capabilities),
         "files": files,
         "token": {"present": bool(resolved_token), "source": _token_source(token, env_file)},

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mneme-codex-adapter"
-version = "0.1.3"
+version = "0.1.4"
 description = "Codex hook and transcript adapter for Mneme"
 authors = [{ name = "Ivan Konstantinov" }]
 readme = "README.md"
@@ -29,6 +29,9 @@ include = ["mneme_codex_adapter*"]
 
 [tool.setuptools.package-data]
 mneme_codex_adapter = ["skills/mneme-memory/SKILL.md"]
+
+[tool.mneme]
+supported_core_contract = ">=0.7,<0.8"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

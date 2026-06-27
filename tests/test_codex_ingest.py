@@ -70,6 +70,7 @@ def test_codex_transcript_normalizes_to_session_events_and_turn_payloads() -> No
 
     assert len(payloads.turns) == 1
     assert payloads.turns[0]["schema_version"] == "mneme.turn.v0"
+    assert payloads.turns[0]["status"] == "COMPLETED"
     assert payloads.turns[0]["event_ids"] == [event["event_id"] for event in events]
     assert payloads.turns[0]["usage"]["tool_call_count"] == 1
 
@@ -90,7 +91,7 @@ def test_codex_transcript_imports_through_rest_and_replay_is_idempotent(tmp_path
         assert first["session"]["created"] is True
         assert first["events"]["accepted"] == 3
         assert first["events"]["duplicates"] == 0
-        assert first["turns"][0]["status"] == "RECORDED"
+        assert first["turns"][0]["status"] == "COMPLETED"
 
         second = await import_codex_transcript(
             sample_transcript(),

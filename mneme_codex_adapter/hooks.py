@@ -239,8 +239,8 @@ def build_codex_context_prepare_request(
             "retrieval": {"query": query or prompt, "top_k": 8},
             "budget_split": {
                 "execution_state_ratio": 0.10,
-                "retrieved_context_ratio": 0.55,
-                "recent_tail_ratio": 0.25,
+                "retrieved_evidence_ratio": 0.55,
+                "protected_tail_ratio": 0.25,
                 "headroom_ratio": 0.10,
             },
         },

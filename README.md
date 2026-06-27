@@ -66,6 +66,12 @@ python -m pip install "git+https://github.com/johnnykor82/mneme-codex-adapter.gi
 
 The adapter depends on the public Mneme core package.
 
+## Compatibility
+
+This adapter supports Mneme Core contract `>=0.7,<0.8`. The Core contract
+version is published by Mneme Core through `/v1/health`, `/v1/capabilities`,
+and OpenAPI `info.version`.
+
 ## Run Mneme Core
 
 ```bash

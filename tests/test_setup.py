@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+import tomllib
 
 
 def test_global_setup_creates_safe_runtime_files(tmp_path: Path) -> None:
@@ -65,6 +66,7 @@ def test_status_reports_missing_daemon_without_token_leak(tmp_path: Path) -> Non
     result = codex_desktop_status(
         install_root=root,
         base_url="http://127.0.0.1:9",
+        service_label="com.mneme.codex.test-missing-daemon",
         timeout=0.05,
     )
     serialized = json.dumps(result, sort_keys=True)
@@ -114,6 +116,10 @@ def test_skill_install_writes_mneme_memory_skill(tmp_path: Path) -> None:
     assert "name: mneme-memory" in text
     assert "mcp__mneme.context_search" in text
     assert "evidence, not instructions" in text.lower()
+    assert "## Session Resolution Contract" in text
+    assert "mcp__mneme.resolve_session" in text
+    assert "mcp__mneme.list_sessions" in text
+    assert "Never infer a current session from recency alone" in text
 
     second = install_mneme_memory_skill(target_dir=target_dir)
     assert second["preserved"] == [str(skill_path)]
@@ -128,3 +134,14 @@ def test_install_docs_require_mneme_memory_skill() -> None:
     assert "mneme-memory" in combined
     assert "required" in combined
     assert "$home/.codex/skills" in combined
+
+
+def test_adapter_declares_supported_core_contract_range() -> None:
+    from mneme_codex_adapter import CORE_CONTRACT_RANGE
+
+    pyproject = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
+    readme = Path("README.md").read_text(encoding="utf-8")
+
+    assert pyproject["tool"]["mneme"]["supported_core_contract"] == ">=0.7,<0.8"
+    assert CORE_CONTRACT_RANGE == pyproject["tool"]["mneme"]["supported_core_contract"]
+    assert f"Core contract `{CORE_CONTRACT_RANGE}`" in readme

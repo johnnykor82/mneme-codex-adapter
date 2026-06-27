@@ -1,5 +1,6 @@
 """Codex adapter utilities for Mneme."""
 
-__all__ = ["__version__"]
+__all__ = ["CORE_CONTRACT_RANGE", "__version__"]
 
-__version__ = "0.1.3"
+__version__ = "0.1.4"
+CORE_CONTRACT_RANGE = ">=0.7,<0.8"

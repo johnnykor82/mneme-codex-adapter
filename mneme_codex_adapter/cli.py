@@ -122,12 +122,14 @@ def build_parser() -> argparse.ArgumentParser:
     doctor.add_argument("--install-root", type=Path, default=Path(DEFAULT_CODEX_INSTALL_ROOT))
     doctor.add_argument("--base-url", default=os.environ.get("MNEME_BASE_URL", DEFAULT_CODEX_BASE_URL))
     doctor.add_argument("--token", default=os.environ.get("MNEME_AUTH_TOKEN"))
+    doctor.add_argument("--service-label", default=DEFAULT_CODEX_SERVICE_LABEL)
     doctor.add_argument("--timeout", type=float, default=2.0)
 
     status = subcommands.add_parser("status")
     status.add_argument("--install-root", type=Path, default=Path(DEFAULT_CODEX_INSTALL_ROOT))
     status.add_argument("--base-url", default=os.environ.get("MNEME_BASE_URL", DEFAULT_CODEX_BASE_URL))
     status.add_argument("--token", default=os.environ.get("MNEME_AUTH_TOKEN"))
+    status.add_argument("--service-label", default=DEFAULT_CODEX_SERVICE_LABEL)
     status.add_argument("--timeout", type=float, default=2.0)
 
     service = subcommands.add_parser("service")
@@ -290,6 +292,7 @@ def main(argv: Sequence[str] | None = None) -> None:
             install_root=args.install_root,
             base_url=args.base_url,
             token=args.token,
+            service_label=args.service_label,
             timeout=args.timeout,
         )
         print(json.dumps(result, indent=2, sort_keys=True, ensure_ascii=False))
