@@ -609,6 +609,24 @@ def test_codex_hook_render_write_config_keeps_validation_warning_and_token_env()
         assert "--timeout 2.5" in command
 
 
+def test_codex_hook_render_write_config_can_resolve_token_from_install_root() -> None:
+    from mneme_codex_adapter.hooks import render_codex_hook_config
+
+    config = render_codex_hook_config(
+        mode="write",
+        python="/opt/mneme/bin/python",
+        base_url="http://127.0.0.1:9876",
+        install_root="/Users/example/.mneme-codex",
+    )
+
+    command = config["hooks"]["UserPromptSubmit"][0]["hooks"][0]["command"]
+    assert "codex-hook-ingest" in command
+    assert "--base-url http://127.0.0.1:9876" in command
+    assert "--install-root /Users/example/.mneme-codex" in command
+    assert "--token" not in command
+    assert "MNEME_AUTH_TOKEN" not in command
+
+
 def test_codex_hook_render_config_cli_prints_json(capsys: Any) -> None:
     from mneme_codex_adapter.cli import main
 
@@ -680,27 +698,25 @@ def test_codex_hook_capture_example_is_capture_only_and_publication_friendly() -
     assert "/users/openclaw/.hermes/plugins/hermes-mneme" not in serialized
 
 
-def test_codex_hooks_usage_doc_keeps_auto_write_disabled_until_verified() -> None:
+def test_codex_hooks_usage_doc_documents_direct_ingest_default_and_fallback() -> None:
     guide = Path("adapters/codex/MNEME_CODEX_HOOKS_USAGE.md").read_text(encoding="utf-8")
     lower = guide.lower()
 
+    assert "setup codex-desktop --global" in lower
+    assert "$home/.codex/hooks.json" in lower
+    assert "direct-ingest hooks by default" in lower
+    assert "mneme_codex_adapter.cli codex-hook-ingest" in lower
+    assert "--install-root" in lower
+    assert "does not embed the bearer token" in lower
+    assert "approve the installed hooks" in lower
     assert "mneme-codex codex-hook-ingest --input hook.json --event stop --dry-run" in lower
-    assert "mneme-codex codex-hook-capture --input - --event stop --output .local/mneme-codex-hooks.jsonl" in lower
-    assert "mneme-codex codex-hook-validate --input .local/mneme-codex-hooks.jsonl" in lower
+    assert "mneme-codex codex-hook-validate" in lower
     assert "mneme-codex codex-hook-import-capture" in lower
     assert "mneme-codex codex-hook-prepare-preview" in lower
-    assert "codex-hook-render-context-preview-config" in lower
+    assert "capture-only remains available" in lower
     assert "codex prompt injection is" in lower
     assert "not supported by current command hooks" in lower
-    assert "real codex hook payloads" in lower
-    assert "dry-run first" in lower
-    assert "capture first" in lower
     assert "codex-hook-render-config" in lower
     assert "--mode capture" in lower
-    assert ".codex/hooks.json" in lower
-    assert "gitignored" in lower
-    assert "disabled by default" in lower
-    assert "rest ingestion remains canonical" in lower
     assert "mcp remains read-only" in lower
-    assert "does not replace codex prompt context" in lower
-    assert "future github users" in lower
+    assert "do not paste" in lower

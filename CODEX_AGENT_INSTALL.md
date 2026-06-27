@@ -37,15 +37,15 @@ export MNEME_CODEX_HOME="$HOME/.mneme-codex"
 
 1. Create the install root and virtual environment.
 2. Install this adapter from GitHub.
-3. Run `mneme-codex setup codex-desktop --global`.
+3. Run `mneme-codex setup codex-desktop --global`; this writes direct-ingest user hooks to `$HOME/.codex/hooks.json`.
 4. Install the `mneme-memory` Codex skill globally with `mneme-codex skill install`.
 5. Install and start the user LaunchAgent with `mneme-codex service install --start`.
 6. Run `mneme-codex doctor --install-root "$MNEME_CODEX_HOME"`.
 7. Show the user the generated MCP config snippet path.
-8. Ask the user before editing any global Codex config.
+8. Tell the user to approve the installed hooks in Codex settings and open a fresh Codex session.
 9. Run the sample transcript smoke ingest.
-10. Explain provider configuration for embeddings, reranker, and LLM enrichment.
-11. Do not enable write hooks. Use capture/validate only unless the user explicitly approves write hooks later.
+10. After hook approval/restart, verify a fresh `UserPromptSubmit` appears through Mneme MCP search.
+11. Explain provider configuration for embeddings, reranker, and LLM enrichment.
 
 ## Commands
 
@@ -113,10 +113,11 @@ cat "$MNEME_CODEX_HOME/codex/mcp_config.toml.snippet"
 - `mneme-codex doctor` reports `READY` after the daemon is running.
 - `mneme-memory` exists at `$HOME/.codex/skills/mneme-memory/SKILL.md`.
 - The install root contains `.local/mneme.env`, `bin/mneme-serve`, `bin/mneme-mcp`, and `codex/mcp_config.toml.snippet`.
+- `$HOME/.codex/hooks.json` contains Mneme `codex-hook-ingest` commands that use `--install-root "$MNEME_CODEX_HOME"` and do not embed the bearer token.
 - `mneme-codex service status` shows the LaunchAgent state or actionable launchctl output.
 - The sample transcript ingest succeeds.
 - Codex MCP config is shown to the user without printing the token.
-- Write hooks remain disabled.
+- After the user approves hooks and restarts Codex, a fresh prompt can be found through Mneme MCP search.
 
 ## Provider Configuration
 

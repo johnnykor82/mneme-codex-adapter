@@ -26,6 +26,7 @@ from .hooks import (
 DEFAULT_CODEX_INSTALL_ROOT = "~/.mneme-codex"
 DEFAULT_CODEX_BASE_URL = "http://127.0.0.1:8765"
 DEFAULT_CODEX_SERVICE_LABEL = "com.mneme.codex"
+DEFAULT_CODEX_CONFIG_DIR = "~/.codex"
 DEFAULT_CODEX_SKILLS_DIR = "~/.codex/skills"
 MNEME_MEMORY_SKILL_NAME = "mneme-memory"
 CODEX_ADAPTER_MODULE = "mneme_codex_adapter.cli"
@@ -36,6 +37,8 @@ def setup_codex_desktop_global(
     install_root: Path | None = None,
     base_url: str = DEFAULT_CODEX_BASE_URL,
     python: str = sys.executable,
+    codex_config_dir: Path | None = None,
+    install_user_hooks: bool = True,
     dry_run: bool = False,
     force_token: bool = False,
 ) -> dict[str, Any]:
@@ -49,6 +52,7 @@ def setup_codex_desktop_global(
     capture_path = local_dir / "mneme-codex-hooks.jsonl"
     preview_path = local_dir / "mneme-codex-context-preview.jsonl"
     sample_transcript_path = local_dir / "mneme-codex-sample-transcript.json"
+    user_hooks_path = _codex_config_dir(codex_config_dir) / "hooks.json"
 
     created: list[str] = []
     preserved: list[str] = []
@@ -127,6 +131,12 @@ def setup_codex_desktop_global(
         capture_output=str(capture_path),
         base_url=base_url,
     )
+    write_config = render_codex_hook_config(
+        mode="write",
+        python=python,
+        base_url=base_url,
+        install_root=str(root),
+    )
     preview_config = render_codex_context_preview_hook_config(
         python=python,
         output=str(preview_path),
@@ -139,6 +149,23 @@ def setup_codex_desktop_global(
         preserved=preserved,
         would_create=would_create,
         dry_run=dry_run,
+    )
+    _write_json_file(
+        codex_dir / "hooks.write.json",
+        write_config,
+        created=created,
+        preserved=preserved,
+        would_create=would_create,
+        dry_run=dry_run,
+    )
+    hooks_report = _install_user_hooks_file(
+        user_hooks_path,
+        write_config,
+        created=created,
+        preserved=preserved,
+        would_create=would_create,
+        dry_run=dry_run,
+        enabled=install_user_hooks,
     )
     _write_json_file(
         codex_dir / "hooks.context_preview.example.json",
@@ -183,11 +210,14 @@ def setup_codex_desktop_global(
             "mcp_json": str(codex_dir / "mcp_server.example.json"),
             "mcp_toml_snippet": str(codex_dir / "mcp_config.toml.snippet"),
             "hook_capture_example": str(codex_dir / "hooks.capture.example.json"),
+            "hook_write_config": str(codex_dir / "hooks.write.json"),
+            "user_hooks_file": str(user_hooks_path),
             "context_preview_example": str(codex_dir / "hooks.context_preview.example.json"),
             "hook_capture_file": str(capture_path),
             "context_preview_file": str(preview_path),
             "sample_transcript": str(sample_transcript_path),
         },
+        "hooks": hooks_report,
         "next_steps": [
             f"Install skill: mneme-codex skill install --target-dir {Path(DEFAULT_CODEX_SKILLS_DIR).expanduser()}",
             f"Install service: mneme-codex service install --install-root {root} --start",
@@ -195,12 +225,14 @@ def setup_codex_desktop_global(
             f"Check health: curl -sS {base_url}/v1/health",
             f"Smoke ingest: mneme-codex codex-ingest --install-root {root} --input {sample_transcript_path}",
             f"Configure Codex MCP using: {codex_dir / 'mcp_config.toml.snippet'}",
-            "Restart Codex or open a fresh session after MCP config changes.",
+            f"Approve the installed direct-ingest hooks in Codex settings: {user_hooks_path}",
+            "Restart Codex or open a fresh session after MCP or hook config changes.",
             f"Run doctor: mneme-codex doctor --install-root {root}",
         ],
         "warnings": [
-            "Setup does not edit Codex config automatically.",
-            "Setup renders capture-only hooks; write hooks require separate validation.",
+            "Setup writes user-level Codex hooks.json unless --skip-user-hooks is used.",
+            "Setup installs direct-ingest user hooks; Codex still requires local hook trust approval.",
+            "Capture-only hooks remain available as an optional fallback example.",
             "Tokens are written to the local env file and are not included in this report.",
         ],
     }
@@ -474,6 +506,97 @@ def codex_service_logs(
 def _install_root(path: Path | None) -> Path:
     raw = Path(DEFAULT_CODEX_INSTALL_ROOT) if path is None else path
     return raw.expanduser().resolve()
+
+
+def _codex_config_dir(path: Path | None) -> Path:
+    raw = Path(DEFAULT_CODEX_CONFIG_DIR) if path is None else path
+    return raw.expanduser().resolve()
+
+
+def _install_user_hooks_file(
+    path: Path,
+    hook_config: dict[str, Any],
+    *,
+    created: list[str],
+    preserved: list[str],
+    would_create: list[str],
+    dry_run: bool,
+    enabled: bool,
+) -> dict[str, Any]:
+    report: dict[str, Any] = {
+        "user_hooks_file": str(path),
+        "user_hooks_installed": False,
+        "mode": "write",
+        "enabled": enabled,
+    }
+    if not enabled:
+        report["status"] = "skipped"
+        return report
+    if dry_run:
+        would_create.append(str(path))
+        report["status"] = "would-write"
+        return report
+
+    existing = _read_hooks_file(path)
+    merged = _merge_mneme_hook_config(existing, hook_config)
+    text = json.dumps(merged, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
+    if path.exists() and path.read_text(encoding="utf-8") == text:
+        preserved.append(str(path))
+        report["user_hooks_installed"] = True
+        report["status"] = "preserved"
+        return report
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8")
+    created.append(str(path))
+    report["user_hooks_installed"] = True
+    report["status"] = "written"
+    return report
+
+
+def _read_hooks_file(path: Path) -> dict[str, Any]:
+    if not path.exists():
+        return {"hooks": {}}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Codex hooks file is not valid JSON: {path}") from exc
+    if not isinstance(data, dict):
+        raise ValueError(f"Codex hooks file must contain a JSON object: {path}")
+    hooks = data.get("hooks")
+    if hooks is None:
+        data["hooks"] = {}
+    elif not isinstance(hooks, dict):
+        raise ValueError(f"Codex hooks file 'hooks' field must be an object: {path}")
+    return data
+
+
+def _merge_mneme_hook_config(existing: dict[str, Any], hook_config: dict[str, Any]) -> dict[str, Any]:
+    merged = dict(existing)
+    existing_hooks = dict(merged.get("hooks") or {})
+    new_hooks = hook_config.get("hooks") or {}
+    for event_name, new_entries in new_hooks.items():
+        current_entries = existing_hooks.get(event_name, [])
+        if not isinstance(current_entries, list):
+            current_entries = []
+        existing_hooks[event_name] = [
+            entry for entry in current_entries if not _entry_contains_mneme_codex_command(entry)
+        ] + list(new_entries)
+    merged["hooks"] = existing_hooks
+    return merged
+
+
+def _entry_contains_mneme_codex_command(entry: Any) -> bool:
+    if not isinstance(entry, dict):
+        return False
+    for hook in entry.get("hooks", []):
+        if not isinstance(hook, dict):
+            continue
+        command = hook.get("command")
+        if isinstance(command, str) and (
+            "mneme_codex_adapter.cli" in command or "mneme-codex" in command
+        ):
+            return True
+    return False
 
 
 def _ensure_dir(path: Path, *, created: list[str], would_create: list[str], dry_run: bool) -> None:

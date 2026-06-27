@@ -414,6 +414,7 @@ def render_codex_hook_config(
     capture_output: str = ".local/mneme-codex-hooks.jsonl",
     base_url: str = "http://127.0.0.1:8765",
     token_env: str = "MNEME_AUTH_TOKEN",
+    install_root: str | None = None,
     timeout: float = 10.0,
 ) -> dict[str, Any]:
     if mode not in {"capture", "dry-run", "write"}:
@@ -434,6 +435,7 @@ def render_codex_hook_config(
                             capture_output=capture_output,
                             base_url=base_url,
                             token_env=token_env,
+                            install_root=install_root,
                             timeout=timeout,
                         ),
                     }
@@ -680,6 +682,7 @@ def _render_hook_command(
     capture_output: str,
     base_url: str,
     token_env: str,
+    install_root: str | None,
     timeout: float,
 ) -> str:
     prefix = f"{shlex.quote(python)} -m mneme_codex_adapter.cli"
@@ -701,13 +704,12 @@ def _render_hook_command(
     if mode == "dry-run":
         parts.append("--dry-run")
     else:
-        parts.extend(
-            [
-                f"--base-url {shlex.quote(base_url)}",
-                f'--token "${token_env}"',
-                f"--timeout {timeout:g}",
-            ]
-        )
+        parts.append(f"--base-url {shlex.quote(base_url)}")
+        if install_root:
+            parts.append(f"--install-root {shlex.quote(install_root)}")
+        else:
+            parts.append(f'--token "${token_env}"')
+        parts.append(f"--timeout {timeout:g}")
     return " ".join(parts)
 
 

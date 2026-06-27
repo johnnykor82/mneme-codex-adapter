@@ -5,7 +5,7 @@ Codex adapter utilities for [Mneme Universal Context Service](https://github.com
 This package provides:
 
 - Codex transcript import into Mneme REST ingestion.
-- Codex hook capture, validation, dry-run, and REST ingestion commands.
+- Codex direct-ingest hook setup plus capture, validation, dry-run, and REST ingestion commands.
 - Codex context-preview preparation files for inspection.
 - A `mneme-memory` Codex skill installer for long-session recall behavior.
 - Codex Desktop MCP setup snippets and user-global runtime helpers.
@@ -14,8 +14,9 @@ It does not replace Codex prompt context automatically. Current Codex command
 hooks can capture/ingest events and prepare preview files; automatic prompt
 insertion still requires a supported host lifecycle hook.
 
-This installs a user-global Mneme daemon plus Codex MCP server config. It is
-not currently packaged as a Codex Desktop marketplace plugin.
+This installs a user-global Mneme daemon, Codex MCP server config snippets,
+the `mneme-memory` skill, and user-level direct-ingest Codex hooks. It is not
+currently packaged as a Codex Desktop marketplace plugin.
 
 ## Install
 
@@ -36,6 +37,10 @@ python3 -m venv "$MNEME_CODEX_HOME/.venv"
 "$MNEME_CODEX_HOME/.venv/bin/mneme-codex" skill install \
   --target-dir "$HOME/.codex/skills"
 ```
+
+`setup codex-desktop --global` writes direct-ingest hooks to
+`$HOME/.codex/hooks.json`. Codex still requires you to approve those local
+command hooks in the UI and open a fresh session before they run.
 
 Then install and start the user LaunchAgent:
 
@@ -95,8 +100,7 @@ mneme-codex status
 mneme-codex service install --start
 mneme-codex service status
 mneme-codex codex-ingest --install-root "$HOME/.mneme-codex" --input adapters/codex/transcript.example.json
-mneme-codex codex-hook-capture --input - --event Stop --output .local/mneme-codex-hooks.jsonl
-mneme-codex codex-hook-validate --input .local/mneme-codex-hooks.jsonl
+mneme-codex codex-hook-render-config --mode write --install-root "$HOME/.mneme-codex"
 mneme-codex codex-hook-ingest --input hook.json --event Stop --dry-run
 ```
 

@@ -95,6 +95,7 @@ def build_parser() -> argparse.ArgumentParser:
     codex_hook_render_config.add_argument("--capture-output", default=".local/mneme-codex-hooks.jsonl")
     codex_hook_render_config.add_argument("--base-url", default=os.environ.get("MNEME_BASE_URL", "http://127.0.0.1:8765"))
     codex_hook_render_config.add_argument("--token-env", default="MNEME_AUTH_TOKEN")
+    codex_hook_render_config.add_argument("--install-root", default=None)
     codex_hook_render_config.add_argument("--timeout", type=float, default=10.0)
     codex_hook_render_config.add_argument("--output", type=Path, default=None)
 
@@ -115,6 +116,8 @@ def build_parser() -> argparse.ArgumentParser:
     codex_desktop_setup.add_argument("--install-root", type=Path, default=Path(DEFAULT_CODEX_INSTALL_ROOT))
     codex_desktop_setup.add_argument("--base-url", default=DEFAULT_CODEX_BASE_URL)
     codex_desktop_setup.add_argument("--python", default=sys.executable)
+    codex_desktop_setup.add_argument("--codex-config-dir", type=Path, default=None)
+    codex_desktop_setup.add_argument("--skip-user-hooks", action="store_true")
     codex_desktop_setup.add_argument("--dry-run", action="store_true")
     codex_desktop_setup.add_argument("--force-token", action="store_true")
 
@@ -254,6 +257,7 @@ def main(argv: Sequence[str] | None = None) -> None:
             capture_output=args.capture_output,
             base_url=args.base_url,
             token_env=args.token_env,
+            install_root=args.install_root,
             timeout=args.timeout,
         )
         _print_or_write(result, args.output)
@@ -281,6 +285,8 @@ def main(argv: Sequence[str] | None = None) -> None:
             install_root=args.install_root,
             base_url=args.base_url,
             python=args.python,
+            codex_config_dir=args.codex_config_dir,
+            install_user_hooks=not args.skip_user_hooks,
             dry_run=args.dry_run,
             force_token=args.force_token,
         )

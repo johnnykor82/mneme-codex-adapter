@@ -4,7 +4,8 @@ This guide installs Mneme for one macOS user account so Codex Desktop can use
 Mneme memory tools from any project on that machine.
 
 It does not enable automatic Codex prompt replacement. Current Codex support is
-MCP memory tools plus explicit hook capture/ingest commands.
+MCP memory tools plus direct-ingest Codex hooks that write events through the
+adapter to Mneme REST.
 
 This installs a user-global Mneme daemon plus Codex MCP server config. It is
 not currently packaged as a Codex Desktop marketplace plugin.
@@ -29,7 +30,8 @@ python3 -m venv "$MNEME_CODEX_HOME/.venv"
 ## 2. Create Local Runtime Files
 
 Run `mneme-codex setup codex-desktop --global` to create the per-user runtime
-files, then install the `mneme-memory` Codex skill:
+files and install user-level direct-ingest hooks, then install the
+`mneme-memory` Codex skill:
 
 ```bash
 "$MNEME_CODEX_HOME/.venv/bin/mneme-codex" setup codex-desktop \
@@ -48,9 +50,13 @@ This creates local files under `$MNEME_CODEX_HOME`, including:
 - `bin/mneme-serve`;
 - `bin/mneme-mcp`;
 - `codex/mcp_config.toml.snippet`;
-- capture-only hook examples.
+- `codex/hooks.write.json` with the same direct-ingest hooks installed into
+  `$HOME/.codex/hooks.json`;
+- `codex/hooks.capture.example.json` as an optional diagnostic fallback.
 
-The setup command does not print the token and does not edit Codex config.
+The setup command does not print the token. The installed hooks use
+`--install-root "$MNEME_CODEX_HOME"` so the adapter reads the local token from
+`.local/mneme.env`; the bearer token is not embedded in Codex config.
 The skill install writes `mneme-memory` to
 `$HOME/.codex/skills/mneme-memory/SKILL.md`. This skill is required for the
 expected Codex behavior in fresh sessions: it tells the agent when to call Mneme
@@ -120,20 +126,28 @@ Then use Codex MCP tools, or call REST manually, to search for:
 Mneme Codex global install smoke event
 ```
 
-## 6. Hooks Ladder
+## 6. Approve And Verify Hooks
 
-Do not jump straight to write hooks.
+`setup codex-desktop --global` writes direct-ingest hooks to:
 
-Use this order:
+```bash
+$HOME/.codex/hooks.json
+```
 
-1. No hooks: manual transcript import only.
-2. Capture-only hooks.
-3. Validate captured payloads.
-4. Dry-run normalize payloads.
-5. Import captured file into a test daemon.
-6. Enable write hooks only after local proof.
+Codex treats hooks as local command execution. Approve the 5 Mneme hooks in
+Codex settings, then open a fresh Codex session. The active commands should use
+`codex-hook-ingest`, `--install-root "$MNEME_CODEX_HOME"`, and no literal
+bearer token.
 
-Render capture-only hooks:
+After restart, send a normal prompt in Codex and verify it appears in Mneme
+through MCP search. If MCP is not available yet, run:
+
+```bash
+"$MNEME_CODEX_HOME/.venv/bin/mneme-codex" doctor \
+  --install-root "$MNEME_CODEX_HOME"
+```
+
+Capture-only hooks remain available for debugging unusual Codex payloads:
 
 ```bash
 "$MNEME_CODEX_HOME/.venv/bin/mneme-codex" codex-hook-render-config \
@@ -141,14 +155,6 @@ Render capture-only hooks:
   --python "$MNEME_CODEX_HOME/.venv/bin/python" \
   --capture-output "$MNEME_CODEX_HOME/.local/mneme-codex-hooks.jsonl" \
   --output "$MNEME_CODEX_HOME/codex/hooks.capture.local.json"
-```
-
-Review the file before copying it into a project `.codex/hooks.json`. Codex may
-ask you to approve hooks in the UI.
-
-Validate captured hooks:
-
-```bash
 "$MNEME_CODEX_HOME/.venv/bin/mneme-codex" codex-hook-validate \
   --input "$MNEME_CODEX_HOME/.local/mneme-codex-hooks.jsonl"
 ```
@@ -222,5 +228,5 @@ In `doctor`, check `provider_capabilities.supports_embeddings`,
 
 - It does not globally modify every project.
 - It does not replace Codex prompt context automatically.
-- It does not enable hook writes by default.
+- It does not bypass Codex hook approval; the user still approves local commands.
 - It does not sync daemon tokens or databases across machines.
