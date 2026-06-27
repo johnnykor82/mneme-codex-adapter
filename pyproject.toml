@@ -13,7 +13,7 @@ license = { text = "Apache-2.0" }
 keywords = ["agents", "memory", "context", "codex", "mneme"]
 dependencies = [
   "httpx>=0.27",
-  "mneme-context-service @ git+https://github.com/johnnykor82/mneme-universal-context-service.git@codex/core-adapter-boundary",
+  "mneme-context-service @ git+https://github.com/johnnykor82/mneme-universal-context-service.git",
 ]
 
 [project.optional-dependencies]
