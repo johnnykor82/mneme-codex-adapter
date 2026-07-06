@@ -12,6 +12,7 @@ from .hooks import (
     DEFAULT_CODEX_CONTEXT_BUDGET_TOKENS,
     DEFAULT_CODEX_CONTEXT_PREVIEW_OUTPUT,
     DEFAULT_CODEX_CONTEXT_WINDOW_TOKENS,
+    DEFAULT_CODEX_HOOK_TIMEOUT_SECONDS,
     capture_codex_hook_payload,
     current_codex_hook_timestamp,
     import_codex_hook_capture_file,
@@ -58,7 +59,7 @@ def build_parser() -> argparse.ArgumentParser:
     codex_hook_ingest.add_argument("--base-url", default=os.environ.get("MNEME_BASE_URL", "http://127.0.0.1:8765"))
     codex_hook_ingest.add_argument("--token", default=os.environ.get("MNEME_AUTH_TOKEN"))
     codex_hook_ingest.add_argument("--install-root", type=Path, default=Path(DEFAULT_CODEX_INSTALL_ROOT))
-    codex_hook_ingest.add_argument("--timeout", type=float, default=10.0)
+    codex_hook_ingest.add_argument("--timeout", type=float, default=DEFAULT_CODEX_HOOK_TIMEOUT_SECONDS)
     codex_hook_ingest.add_argument("--dry-run", action="store_true")
 
     codex_hook_capture = subcommands.add_parser("codex-hook-capture")
@@ -75,7 +76,7 @@ def build_parser() -> argparse.ArgumentParser:
     codex_hook_import_capture.add_argument("--base-url", default=os.environ.get("MNEME_BASE_URL", "http://127.0.0.1:8765"))
     codex_hook_import_capture.add_argument("--token", default=os.environ.get("MNEME_AUTH_TOKEN"))
     codex_hook_import_capture.add_argument("--install-root", type=Path, default=Path(DEFAULT_CODEX_INSTALL_ROOT))
-    codex_hook_import_capture.add_argument("--timeout", type=float, default=10.0)
+    codex_hook_import_capture.add_argument("--timeout", type=float, default=DEFAULT_CODEX_HOOK_TIMEOUT_SECONDS)
 
     codex_hook_prepare_preview = subcommands.add_parser("codex-hook-prepare-preview")
     codex_hook_prepare_preview.add_argument("--input", type=Path, required=True)
@@ -84,7 +85,7 @@ def build_parser() -> argparse.ArgumentParser:
     codex_hook_prepare_preview.add_argument("--base-url", default=os.environ.get("MNEME_BASE_URL", "http://127.0.0.1:8765"))
     codex_hook_prepare_preview.add_argument("--token", default=os.environ.get("MNEME_AUTH_TOKEN"))
     codex_hook_prepare_preview.add_argument("--install-root", type=Path, default=Path(DEFAULT_CODEX_INSTALL_ROOT))
-    codex_hook_prepare_preview.add_argument("--timeout", type=float, default=10.0)
+    codex_hook_prepare_preview.add_argument("--timeout", type=float, default=DEFAULT_CODEX_HOOK_TIMEOUT_SECONDS)
     codex_hook_prepare_preview.add_argument("--context-window-tokens", type=int, default=DEFAULT_CODEX_CONTEXT_WINDOW_TOKENS)
     codex_hook_prepare_preview.add_argument("--budget-tokens", type=int, default=DEFAULT_CODEX_CONTEXT_BUDGET_TOKENS)
     codex_hook_prepare_preview.add_argument("--dry-run", action="store_true")
@@ -96,7 +97,7 @@ def build_parser() -> argparse.ArgumentParser:
     codex_hook_render_config.add_argument("--base-url", default=os.environ.get("MNEME_BASE_URL", "http://127.0.0.1:8765"))
     codex_hook_render_config.add_argument("--token-env", default="MNEME_AUTH_TOKEN")
     codex_hook_render_config.add_argument("--install-root", default=None)
-    codex_hook_render_config.add_argument("--timeout", type=float, default=10.0)
+    codex_hook_render_config.add_argument("--timeout", type=float, default=DEFAULT_CODEX_HOOK_TIMEOUT_SECONDS)
     codex_hook_render_config.add_argument("--output", type=Path, default=None)
 
     codex_hook_render_context_preview = subcommands.add_parser("codex-hook-render-context-preview-config")
@@ -104,7 +105,7 @@ def build_parser() -> argparse.ArgumentParser:
     codex_hook_render_context_preview.add_argument("--preview-output", default=DEFAULT_CODEX_CONTEXT_PREVIEW_OUTPUT)
     codex_hook_render_context_preview.add_argument("--base-url", default=os.environ.get("MNEME_BASE_URL", "http://127.0.0.1:8765"))
     codex_hook_render_context_preview.add_argument("--token-env", default="MNEME_AUTH_TOKEN")
-    codex_hook_render_context_preview.add_argument("--timeout", type=float, default=10.0)
+    codex_hook_render_context_preview.add_argument("--timeout", type=float, default=DEFAULT_CODEX_HOOK_TIMEOUT_SECONDS)
     codex_hook_render_context_preview.add_argument("--context-window-tokens", type=int, default=DEFAULT_CODEX_CONTEXT_WINDOW_TOKENS)
     codex_hook_render_context_preview.add_argument("--budget-tokens", type=int, default=DEFAULT_CODEX_CONTEXT_BUDGET_TOKENS)
     codex_hook_render_context_preview.add_argument("--output", type=Path, default=None)

@@ -171,11 +171,15 @@ def test_codex_hook_normalizes_real_codex_desktop_fields() -> None:
     stop_event = stop.event_batch["events"][0]
 
     assert prompt.session["project_id"] == REAL_CODEX_PROJECT
+    assert prompt_event["role"] == "USER"
+    assert prompt_event["type"] == "USER_MESSAGE"
     assert prompt_event["metadata"]["codex_hook_event"] == "UserPromptSubmit"
     assert prompt_event["timestamp"] == REAL_CODEX_CAPTURED_AT
-    assert "Validate real Mneme Codex hook capture." in prompt_event["content"]["text"]
+    assert prompt_event["content"]["text"] == "Validate real Mneme Codex hook capture."
     assert "Payload keys:" not in prompt_event["content"]["text"]
 
+    assert tool_event["role"] == "RUNTIME"
+    assert tool_event["type"] == "CODEX_HOOK"
     assert tool_event["metadata"]["codex_hook_event"] == "PostToolUse"
     assert tool_event["metadata"]["tool_name"] == "exec_command"
     assert tool_event["metadata"]["tool_use_id"] == "call-real-tool-1"
@@ -623,6 +627,7 @@ def test_codex_hook_render_write_config_can_resolve_token_from_install_root() ->
     assert "codex-hook-ingest" in command
     assert "--base-url http://127.0.0.1:9876" in command
     assert "--install-root /Users/example/.mneme-codex" in command
+    assert "--timeout 300" in command
     assert "--token" not in command
     assert "MNEME_AUTH_TOKEN" not in command
 
@@ -668,6 +673,7 @@ def test_codex_hook_render_context_preview_config_cli_prints_user_prompt_hook(ca
     assert "--event UserPromptSubmit" in command
     assert "--output .local/preview.jsonl" in command
     assert "--token \"$MNEME_AUTH_TOKEN\"" in command
+    assert "--timeout 300" in command
 
 
 def test_project_local_codex_hooks_file_is_ignored() -> None:

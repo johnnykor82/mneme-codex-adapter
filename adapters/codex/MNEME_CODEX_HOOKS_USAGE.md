@@ -34,7 +34,7 @@ $MNEME_CODEX_HOME/.venv/bin/python -m mneme_codex_adapter.cli codex-hook-ingest 
   --event UserPromptSubmit \
   --base-url http://127.0.0.1:8765 \
   --install-root "$MNEME_CODEX_HOME" \
-  --timeout 10
+  --timeout 300
 ```
 
 The hook command does not embed the bearer token. The adapter resolves it from
@@ -50,8 +50,9 @@ After setup, service start, hook approval, and Codex restart:
 2. Use Mneme MCP `resolve_session` for the current project/session.
 3. Search for that prompt with `context_search`.
 
-A working install stores the prompt as a `CODEX_HOOK` event. `PostToolUse`,
-`PostCompact`, `Stop`, and `SessionStart` events should follow the same path
+A working install stores `UserPromptSubmit` as a canonical `USER_MESSAGE` event
+so Core LLM enrichment and user-message state logic can run. `PostToolUse`,
+`PostCompact`, `Stop`, and `SessionStart` remain `CODEX_HOOK` runtime events
 when Codex emits them.
 
 `mneme-codex doctor --install-root "$MNEME_CODEX_HOME"` should report `READY`
@@ -132,6 +133,11 @@ mneme-codex codex-hook-prepare-preview \
 The preview record includes the `/v1/context/prepare` request, the prepared
 Mneme response, trace id, warnings, and a marker that Codex prompt injection is
 not supported by current command hooks.
+
+Write and context-preview hook commands default to `--timeout 300` so slow local
+LLM enrichment or context preparation does not make an otherwise healthy hook
+look broken. Use a smaller explicit timeout only for minimal/provider-free
+smoke checks.
 
 ## Trust Boundary
 

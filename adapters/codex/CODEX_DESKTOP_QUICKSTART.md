@@ -162,8 +162,9 @@ Capture-only hooks remain available for debugging unusual Codex payloads:
 ## 7. Configure Providers
 
 The default install starts in minimal local mode. For production-like semantic
-memory, configure embeddings and verify them before relying on recall quality.
-Reranker and LLM enrichment are optional quality layers.
+memory, configure embeddings, reranking, and LLM enrichment, then verify all
+three before relying on recall quality. A healthy daemon and visible MCP tools
+prove the minimal path; they do not prove all provider layers are active.
 
 Put non-secret settings in:
 
@@ -210,7 +211,17 @@ Restart after changes:
 ```
 
 In `doctor`, check `provider_capabilities.supports_embeddings`,
-`supports_reranking`, and `supports_llm_enrichment`.
+`supports_reranking`, and `supports_llm_enrichment`. Also check provider
+details from `/v1/capabilities`: `available` is configuration/credential based,
+while `live_status` and `live_health_checked` show observed provider outcomes in
+the current daemon process.
+
+Full-provider acceptance checks:
+
+- `fetch_event` reports `ingestion.embedding_status: INDEXED` for a new event;
+- the session cost report shows `embedding_items > 0`;
+- search results show reranking when a reranker is configured;
+- LLM enrichment increments `enrichment_calls` without enrichment failures.
 
 ## Troubleshooting
 

@@ -29,6 +29,7 @@ CODEX_HOOK_MATCHERS = {
 DEFAULT_CODEX_CONTEXT_PREVIEW_OUTPUT = ".local/mneme-codex-context-preview.jsonl"
 DEFAULT_CODEX_CONTEXT_WINDOW_TOKENS = 128_000
 DEFAULT_CODEX_CONTEXT_BUDGET_TOKENS = 6_000
+DEFAULT_CODEX_HOOK_TIMEOUT_SECONDS = 300.0
 
 
 def normalize_codex_hook_payload(
@@ -90,7 +91,8 @@ def normalize_codex_hook_payload(
         ),
     }
 
-    content_text = _content_text(payload, hook_event)
+    is_user_prompt = hook_event == "UserPromptSubmit"
+    content_text = _prepare_prompt_text(payload, hook_event) if is_user_prompt else _content_text(payload, hook_event)
     event = {
         "schema_version": "mneme.event.v0",
         "event_id": _event_id(payload, hook_event=hook_event, session_id=session_id),
@@ -98,8 +100,8 @@ def normalize_codex_hook_payload(
         "turn_id": payload.get("turn_id") or metadata.get("turn_id"),
         "agent_id": agent_id,
         "runtime": runtime,
-        "role": "RUNTIME",
-        "type": "CODEX_HOOK",
+        "role": "USER" if is_user_prompt else "RUNTIME",
+        "type": "USER_MESSAGE" if is_user_prompt else "CODEX_HOOK",
         "timestamp": timestamp,
         "content": {"format": "TEXT", "text": content_text},
         "parent_event_ids": list(payload.get("parent_event_ids") or []),
@@ -125,7 +127,7 @@ async def import_codex_hook_payload(
     captured_at: str | None = None,
     base_url: str,
     token: str | None = None,
-    timeout: float = 10.0,
+    timeout: float = DEFAULT_CODEX_HOOK_TIMEOUT_SECONDS,
     transport: httpx.AsyncBaseTransport | None = None,
 ) -> dict[str, Any]:
     payloads = normalize_codex_hook_payload(
@@ -150,7 +152,7 @@ async def import_codex_hook_capture_file(
     *,
     base_url: str,
     token: str | None = None,
-    timeout: float = 10.0,
+    timeout: float = DEFAULT_CODEX_HOOK_TIMEOUT_SECONDS,
     transport: httpx.AsyncBaseTransport | None = None,
 ) -> dict[str, Any]:
     results = []
@@ -260,7 +262,7 @@ async def prepare_codex_context_preview(
     output_path: Path | None = None,
     base_url: str,
     token: str | None = None,
-    timeout: float = 10.0,
+    timeout: float = DEFAULT_CODEX_HOOK_TIMEOUT_SECONDS,
     context_window_tokens: int = DEFAULT_CODEX_CONTEXT_WINDOW_TOKENS,
     budget_tokens: int = DEFAULT_CODEX_CONTEXT_BUDGET_TOKENS,
     dry_run: bool = False,
@@ -415,7 +417,7 @@ def render_codex_hook_config(
     base_url: str = "http://127.0.0.1:8765",
     token_env: str = "MNEME_AUTH_TOKEN",
     install_root: str | None = None,
-    timeout: float = 10.0,
+    timeout: float = DEFAULT_CODEX_HOOK_TIMEOUT_SECONDS,
 ) -> dict[str, Any]:
     if mode not in {"capture", "dry-run", "write"}:
         raise ValueError("mode must be one of: capture, dry-run, write.")
@@ -452,7 +454,7 @@ def render_codex_context_preview_hook_config(
     output: str = DEFAULT_CODEX_CONTEXT_PREVIEW_OUTPUT,
     base_url: str = "http://127.0.0.1:8765",
     token_env: str = "MNEME_AUTH_TOKEN",
-    timeout: float = 10.0,
+    timeout: float = DEFAULT_CODEX_HOOK_TIMEOUT_SECONDS,
     context_window_tokens: int = DEFAULT_CODEX_CONTEXT_WINDOW_TOKENS,
     budget_tokens: int = DEFAULT_CODEX_CONTEXT_BUDGET_TOKENS,
 ) -> dict[str, Any]:
