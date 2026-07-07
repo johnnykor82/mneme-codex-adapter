@@ -44,11 +44,17 @@ Use this order:
 1. If the user, current local context, a trusted hook/importer output, or a
    prior Mneme response already supplied an exact valid `session_id`, use it.
 2. Otherwise call `mcp__mneme.resolve_session` with the current workspace
-   `project_path` and any available `thread_id`, `slug`, or task query.
+   `project_path` and any available Codex thread id as `thread_id`, plus
+   `slug` or task query when useful. A Codex thread id is a strong anchor; pass
+   it as `thread_id` instead of relying only on semantic query text.
 3. If resolution is missing or ambiguous, call `mcp__mneme.list_sessions` with
    `project_path` and/or query. Prefer a single latest `ACTIVE` match whose
    `project_id` or `metadata.cwd` exactly matches the current workspace.
-4. If multiple plausible matches remain, do not guess silently. State the
+4. If `mcp__mneme.list_sessions` is mentioned by Mneme but is not currently
+   callable, use `tool_search` with query `mneme list_sessions` to expose it,
+   then call it. Do not stop after a single `resolve_session` miss when the
+   session matters and a discovery tool can be exposed.
+5. If multiple plausible matches remain, do not guess silently. State the
    candidates and ask for clarification, or continue without Mneme evidence if
    the task can proceed safely.
 

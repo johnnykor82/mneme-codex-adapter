@@ -185,6 +185,9 @@ def test_skill_install_writes_mneme_memory_skill(tmp_path: Path) -> None:
     assert "## Session Resolution Contract" in text
     assert "mcp__mneme.resolve_session" in text
     assert "mcp__mneme.list_sessions" in text
+    assert "tool_search" in text
+    assert "mneme list_sessions" in text
+    assert "thread_id" in text
     assert "Never infer a current session from recency alone" in text
 
     second = install_mneme_memory_skill(target_dir=target_dir)
