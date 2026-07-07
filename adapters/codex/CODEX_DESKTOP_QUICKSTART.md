@@ -232,6 +232,8 @@ Full-provider acceptance checks:
 | `operation not permitted` binding `127.0.0.1:8765` | Sandbox blocks local bind | Start `bin/mneme-serve` outside the sandbox. |
 | Service fails to start | launchd rejected the plist or daemon crashed | Run `mneme-codex service logs --install-root "$MNEME_CODEX_HOME"`. |
 | Codex cannot see Mneme tools | MCP config not installed or Codex not restarted | Add the snippet and open a fresh Codex session. |
+| Mneme MCP call returns `The automatic permission approval review did not finish before its deadline` | Codex host permission-gating timeout before the tool call completed | Retry once. Prefer exact `thread_id` plus `project_path`. Do not classify this as Mneme downtime unless `doctor`, daemon logs, or REST responses show Mneme-side errors. |
+| Sandboxed `doctor` reports `[Errno 1] Operation not permitted` for `127.0.0.1` | Codex command sandbox blocked localhost access | Rerun `mneme-codex doctor --install-root "$MNEME_CODEX_HOME" --timeout 300` with explicit approval/escalation before reporting daemon failure. |
 | `401` from Mneme | Missing/wrong token | Run `mneme-codex doctor`; do not print the token. |
 | Hooks produce no data | Hooks not trusted or not active | Review `.codex/hooks.json`, approve in Codex, start a new session. |
 

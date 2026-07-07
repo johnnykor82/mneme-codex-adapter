@@ -155,6 +155,24 @@ Do not guess silently. Create an install feedback file in the path the user
 provides. If the user did not provide a path, write `mneme-codex-install-feedback.md`
 in the current workspace.
 
+If a Mneme MCP tool call returns `The automatic permission approval review did
+not finish before its deadline`, classify it as a Codex host
+permission-gating timeout unless daemon logs, REST responses, or
+`mneme-codex doctor` prove a Mneme-side failure. Retry once. Prefer an exact
+Codex `thread_id` plus `project_path` before query-based resolution. If the
+same permission timeout repeats, continue from local files only when safe and
+say that Codex permission review timed out; do not say Mneme is unavailable
+from that error alone.
+
+When checking daemon health from inside Codex, remember that the command
+sandbox can block localhost connections to `127.0.0.1` and make a sandboxed
+`doctor` look broken. Rerun with explicit approval/escalation before reporting
+a daemon failure:
+
+```bash
+"$MNEME_CODEX_HOME/.venv/bin/mneme-codex" doctor --install-root "$MNEME_CODEX_HOME" --timeout 300
+```
+
 Use this structure:
 
 ```markdown

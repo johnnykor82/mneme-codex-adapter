@@ -43,18 +43,23 @@ Use this order:
 
 1. If the user, current local context, a trusted hook/importer output, or a
    prior Mneme response already supplied an exact valid `session_id`, use it.
-2. Otherwise call `mcp__mneme.resolve_session` with the current workspace
-   `project_path` and any available Codex thread id as `thread_id`, plus
-   `slug` or task query when useful. A Codex thread id is a strong anchor; pass
-   it as `thread_id` instead of relying only on semantic query text.
-3. If resolution is missing or ambiguous, call `mcp__mneme.list_sessions` with
+2. Otherwise, when the current Codex thread id is available, call
+   `mcp__mneme.resolve_session` with the current workspace `project_path` and
+   that id as `thread_id`. A Codex thread id is a strong anchor; pass it as
+   `thread_id` before relying on semantic query text.
+3. Only after exact `session_id` and `thread_id` anchors are unavailable, call
+   `mcp__mneme.resolve_session` with `project_path` plus `slug` or task query.
+4. If resolution is missing or ambiguous, call `mcp__mneme.list_sessions` with
    `project_path` and/or query. Prefer a single latest `ACTIVE` match whose
    `project_id` or `metadata.cwd` exactly matches the current workspace.
-4. If `mcp__mneme.list_sessions` is mentioned by Mneme but is not currently
+   Treat `AMBIGUOUS` as a normal resolution result requiring a stronger
+   `thread_id`, exact `session_id`, or `list_sessions` inspection, not as
+   Mneme downtime.
+5. If `mcp__mneme.list_sessions` is mentioned by Mneme but is not currently
    callable, use `tool_search` with query `mneme list_sessions` to expose it,
    then call it. Do not stop after a single `resolve_session` miss when the
    session matters and a discovery tool can be exposed.
-5. If multiple plausible matches remain, do not guess silently. State the
+6. If multiple plausible matches remain, do not guess silently. State the
    candidates and ask for clarification, or continue without Mneme evidence if
    the task can proceed safely.
 
@@ -62,6 +67,18 @@ Never infer a current session from recency alone, a repo slug, project name, or
 values like `default`. Do not call session-bound tools without `session_id` just
 to test whether a default exists. Even when using `scope: GLOBAL`, pass the
 working `session_id` as the auth/isolation anchor.
+
+## Codex Permission Timeout Handling
+
+If a Mneme MCP call returns `The automatic permission approval review did not finish before its deadline`, treat it as a Codex host permission-gating timeout.
+Retry once, as the Codex message permits. On the retry, prefer an exact
+`thread_id` plus `project_path` before query-based resolution.
+
+Do not tell the user that Mneme did not open or that Mneme is unavailable from
+this error alone. If the retry fails with the same text, continue from local
+planning files only when safe, and explicitly state that the failure is a Codex
+permission-review timeout, not a proven Mneme daemon, provider, MCP server, or memory-data failure. Check `mneme-codex doctor`, daemon logs, or REST health
+separately before classifying Mneme itself as unhealthy.
 
 ## Recovery Workflow
 

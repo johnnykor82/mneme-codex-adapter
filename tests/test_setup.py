@@ -189,6 +189,10 @@ def test_skill_install_writes_mneme_memory_skill(tmp_path: Path) -> None:
     assert "mneme list_sessions" in text
     assert "thread_id" in text
     assert "Never infer a current session from recency alone" in text
+    assert "automatic permission approval review did not finish before its deadline" in text
+    assert "Codex host permission-gating timeout" in text
+    assert "Retry once" in text
+    assert "not a proven Mneme daemon, provider, MCP server, or memory-data failure" in text
 
     second = install_mneme_memory_skill(target_dir=target_dir)
     assert second["preserved"] == [str(skill_path)]
@@ -207,6 +211,11 @@ def test_install_docs_require_mneme_memory_skill() -> None:
     assert "codex-hook-ingest" in combined
     assert "--install-root" in combined
     assert "approve" in combined
+    assert "automatic permission approval review did not finish before its deadline" in combined
+    assert "permission-gating timeout" in combined
+    assert "mneme-codex doctor --install-root" in combined
+    assert "sandboxed `doctor`" in combined
+    assert "127.0.0.1" in combined
 
 
 def test_adapter_declares_supported_core_contract_range() -> None:

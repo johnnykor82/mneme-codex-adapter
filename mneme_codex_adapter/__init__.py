@@ -2,5 +2,5 @@
 
 __all__ = ["CORE_CONTRACT_RANGE", "__version__"]
 
-__version__ = "0.1.7"
+__version__ = "0.1.8"
 CORE_CONTRACT_RANGE = ">=0.7,<0.8"
